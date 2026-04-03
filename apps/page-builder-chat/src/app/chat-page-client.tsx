@@ -337,6 +337,24 @@ export function ChatPageClient({ chatPanelEnabled, plainTextEnabled, openAiReady
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Receive page structure pushed by the page-builder (parent window).
+   * Updates local page state so the AI chat always works on the latest editor data.
+   */
+  useEffect(() => {
+    function handlePageSync(event: MessageEvent) {
+      if (event.data?.type !== "PAGE_BUILDER_SYNC_PAGE") return;
+      // Only accept messages originating from the direct parent window.
+      if (event.source !== window.parent) return;
+      const syncedPage = event.data?.page;
+      if (syncedPage && typeof syncedPage === "object") {
+        setPage(syncedPage);
+      }
+    }
+    window.addEventListener("message", handlePageSync);
+    return () => window.removeEventListener("message", handlePageSync);
+  }, []);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
@@ -384,6 +402,10 @@ export function ChatPageClient({ chatPanelEnabled, plainTextEnabled, openAiReady
         setPublishStatus(`Failed (${res.status}): ${text.slice(0, 600)}`);
       } else {
         setPublishStatus(`Success (${res.status}). ${text.slice(0, 400)}`);
+        // Transfer the latest page structure back to the page-builder iframe host.
+        if (typeof window !== "undefined" && window.parent && window.parent !== window) {
+          window.parent.postMessage({ type: "CHAT_PAGE_UPDATE", page }, "*");
+        }
         setTimeout(() => setPublishStatus(null), 2000);
       }
     } catch (e) {
