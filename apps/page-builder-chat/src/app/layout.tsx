@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Page builder chat",
+  title: "Page builder chatjjjjj",
   description: "Configure Puck page JSON via chat or commands",
 };
 
