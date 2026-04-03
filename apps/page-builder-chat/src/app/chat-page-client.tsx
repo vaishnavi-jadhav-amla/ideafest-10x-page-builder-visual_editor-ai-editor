@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 /** Same shape as sampleEmptyPageStructure — kept local so the client bundle does not pull agents/server code. */
 const INITIAL_PAGE = {
@@ -278,6 +278,8 @@ export function ChatPageClient({
   const [bannerSliderChoices, setBannerSliderChoices] = useState<BannerSliderChoice[] | null>(null);
   const [bannerSliderUpdateComponentId, setBannerSliderUpdateComponentId] = useState<string | null>(null);
   const [productCarousel, setProductCarousel] = useState<ProductCarouselUiState | null>(null);
+  const [selectedImage, setSelectedImage] = useState<{ base64: string; mimeType: string; name: string } | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const pushAssistant = useCallback((content: string) => {
     setMessages((m) => [...m, { role: "assistant", content }]);
@@ -286,6 +288,86 @@ export function ChatPageClient({
   const appendCmd = useCallback((cmd: Record<string, unknown>) => {
     setCommandsInput((prev) => appendCommandLine(prev, cmd));
   }, []);
+
+  const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      setLastError("Unsupported image type. Use PNG, JPEG, GIF, or WebP.");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setLastError("Image too large (max 20 MB).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      // Strip the data:...;base64, prefix
+      const base64 = dataUrl.split(",")[1] ?? "";
+      setSelectedImage({ base64, mimeType: file.type, name: file.name });
+      setLastError(null);
+    };
+    reader.onerror = () => setLastError("Failed to read image file.");
+    reader.readAsDataURL(file);
+    // Reset input so the same file can be re-selected
+    e.target.value = "";
+  }, []);
+
+  const sendImageForAnalysis = useCallback(async () => {
+    if (!selectedImage || loading) return;
+    setLastError(null);
+    setBannerSliderChoices(null);
+    setBannerSliderUpdateComponentId(null);
+    setProductCarousel(null);
+    const userMsg = chatInput.trim();
+    setMessages((m) => [
+      ...m,
+      { role: "user", content: `[image] ${selectedImage.name}${userMsg ? `\n${userMsg}` : ""}` },
+    ]);
+    setChatInput("");
+    setLoading(true);
+    const imgPayload = selectedImage;
+    setSelectedImage(null);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          page,
+          imageBase64: imgPayload.base64,
+          imageMimeType: imgPayload.mimeType,
+          message: userMsg || undefined,
+        }),
+        cache: "no-store",
+      });
+      const data = (await res.json()) as ChatApiJson;
+      if (!res.ok) {
+        setLastError(data.error ?? res.statusText);
+        pushAssistant(`Error: ${data.error ?? res.statusText}`);
+        return;
+      }
+      const nextPage = pageFromApiPayload(data.page);
+      if (nextPage !== null) setPage(nextPage);
+      const appliedNdjson = commandsToNdjson(data.toolArgumentsParsed?.[0]?.commands);
+      if (appliedNdjson) setCommandsInput(appliedNdjson);
+      if (data.bannerSliderChoices?.length) {
+        setBannerSliderChoices(data.bannerSliderChoices);
+        setBannerSliderUpdateComponentId(data.bannerSliderUpdateComponentId ?? null);
+      }
+      if (data.productCarouselPicker) {
+        setProductCarousel((prev) => mergeProductCarouselPicker(prev, data.productCarouselPicker!));
+      }
+      pushAssistant(formatChatAssistantReply(data.assistantContent, data.applied, data.errors));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setLastError(msg);
+      pushAssistant(`Request failed: ${msg}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedImage, loading, chatInput, page, pushAssistant]);
 
   const publishToPreview = useCallback(async () => {
     setPublishLoading(true);
@@ -734,12 +816,71 @@ export function ChatPageClient({
                   Chat — try <code>add banner slider</code>, <code>add products</code> /{" "}
                   <code>add product carousel</code>, <code>set title …</code>, <code>add text …</code>,{" "}
                   <code>help</code>. Free-form uses Ollama/OpenAI when configured.
+                  {" | "}Upload an image to auto-detect widgets.
                 </div>
+                {selectedImage && (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 8,
+                      padding: "6px 10px",
+                      borderRadius: 8,
+                      border: "1px solid var(--accent)",
+                      background: "var(--bg)",
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    <span style={{ flex: 1 }}>
+                      Image: <strong>{selectedImage.name}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImage(null)}
+                      style={{
+                        padding: "2px 8px",
+                        borderRadius: 4,
+                        border: "1px solid var(--border)",
+                        background: "transparent",
+                        color: "var(--text)",
+                        cursor: "pointer",
+                        fontSize: "0.75rem",
+                      }}
+                    >
+                      Remove
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void sendImageForAnalysis()}
+                      disabled={loading}
+                      style={{
+                        padding: "4px 12px",
+                        borderRadius: 6,
+                        border: "none",
+                        background: "var(--accent)",
+                        color: "#fff",
+                        fontWeight: 600,
+                        cursor: loading ? "wait" : "pointer",
+                        fontSize: "0.8rem",
+                      }}
+                    >
+                      {loading ? "Analyzing…" : "Analyze image"}
+                    </button>
+                  </div>
+                )}
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/gif,image/webp"
+                  onChange={handleImageSelect}
+                  style={{ display: "none" }}
+                />
                 <div style={{ display: "flex", gap: 8 }}>
                   <textarea
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="e.g. set title Summer sale&#10;add heading Welcome&#10;add text Shop now."
+                    placeholder={selectedImage ? "Optional: describe what you want to build from this image…" : "e.g. set title Summer sale\nadd heading Welcome\nadd text Shop now."}
                     rows={2}
                     style={{
                       flex: 1,
@@ -754,26 +895,57 @@ export function ChatPageClient({
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
-                        void sendChat();
+                        if (selectedImage) {
+                          void sendImageForAnalysis();
+                        } else {
+                          void sendChat();
+                        }
                       }
                     }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => void sendChat()}
-                    disabled={loading}
-                    style={{
-                      padding: "0 16px",
-                      borderRadius: 8,
-                      border: "none",
-                      background: "var(--accent)",
-                      color: "#fff",
-                      fontWeight: 600,
-                      cursor: loading ? "wait" : "pointer",
-                    }}
-                  >
-                    {loading ? "…" : "Send"}
-                  </button>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedImage) {
+                          void sendImageForAnalysis();
+                        } else {
+                          void sendChat();
+                        }
+                      }}
+                      disabled={loading}
+                      style={{
+                        padding: "0 16px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: "var(--accent)",
+                        color: "#fff",
+                        fontWeight: 600,
+                        cursor: loading ? "wait" : "pointer",
+                        flex: 1,
+                      }}
+                    >
+                      {loading ? "…" : selectedImage ? "Analyze" : "Send"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={loading}
+                      title="Upload page screenshot for AI analysis"
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: 8,
+                        border: "1px solid var(--border)",
+                        background: "var(--bg)",
+                        color: "var(--text)",
+                        cursor: loading ? "default" : "pointer",
+                        fontSize: "0.7rem",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      Upload image
+                    </button>
+                  </div>
                 </div>
               </>
             ) : (

@@ -10,6 +10,11 @@ import {
 import { runOllamaPageCommands } from "@znode/agents/page-builder-config/ollama-commands";
 import { parsePageBuilderCommands } from "@znode/agents/page-builder-config/parse";
 import { runPageBuilderLlmWorkflow } from "@znode/agents/page-builder-config/workflow";
+import {
+  runOpenAiVisionCommands,
+  runOllamaVisionCommands,
+  formatCmsWidgetSuggestions,
+} from "@znode/agents/page-builder-config/vision-commands";
 import type { IPageStructure } from "@znode/types/visual-editor";
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
@@ -64,6 +69,10 @@ type ChatBody = {
   message?: string;
   useCommandsOnly?: boolean;
   commandsText?: string;
+  /** Base64-encoded image for vision analysis (no data: prefix). */
+  imageBase64?: string;
+  /** MIME type of the uploaded image (e.g. "image/png"). */
+  imageMimeType?: string;
   /** After banner-slider picker: CMS master key for Puck (e.g. `"8"`). */
   selectBannerSliderKey?: string;
   selectBannerSliderLabel?: string;
@@ -607,6 +616,135 @@ export async function POST(req: Request) {
           pageSize,
           hasMore: listed.hasMore,
         },
+      });
+    }
+
+    /* ── Image-to-page (vision AI) ── */
+    if (body.imageBase64?.trim() && body.imageMimeType?.trim()) {
+      console.log("[vision] Analyze image clicked — mimeType:", body.imageMimeType, "base64 length:", body.imageBase64.length, "user message:", body.message ?? "(none)");
+      const llmPref = getLlmProviderPreference();
+      const ollama = getOllamaConfig();
+      const apiKey = process.env.OPENAI_API_KEY?.trim();
+      const ollamaVisionModel =
+        process.env.PAGE_BUILDER_CHAT_OLLAMA_VISION_MODEL?.trim() ||
+        process.env.PAGE_BUILDER_CHAT_OLLAMA_MODEL?.trim() ||
+        "llava";
+      const tuning = getOllamaRequestTuning();
+      const useOllamaVision =
+        ollama !== null && (llmPref === "auto" || llmPref === "ollama");
+      const useOpenAiVision =
+        (llmPref === "openai" || llmPref === "auto") &&
+        isPageBuilderChatAiEnabled() &&
+        Boolean(apiKey);
+
+      let visionResult: import("@znode/agents/page-builder-config/vision-commands").VisionAnalysisResult | null =
+        null;
+      let visionSource = "";
+
+      if (useOllamaVision && ollama) {
+        try {
+          visionResult = await runOllamaVisionCommands({
+            page: body.page,
+            imageBase64: body.imageBase64,
+            imageMimeType: body.imageMimeType,
+            userMessage: body.message,
+            baseUrl: ollama.url,
+            model: ollamaVisionModel,
+            numCtx: tuning.numCtx,
+            numPredict: Math.max(tuning.numPredict, 2048),
+            numGpu: tuning.numGpu,
+          });
+          visionSource = "ollama-vision";
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          if (llmPref !== "auto" || !useOpenAiVision) {
+            return jsonResult({
+              assistantContent: `**Ollama vision error:** ${msg}\n\nEnsure a vision model (e.g. \`llava\`) is installed: \`ollama pull ${ollamaVisionModel}\`.`,
+              page: body.page,
+              applied: 0,
+              errors: [],
+              toolArgumentsParsed: [],
+              source: "ollama-vision-error",
+            });
+          }
+          /* auto: fall through to OpenAI */
+        }
+      }
+
+      if (!visionResult && useOpenAiVision && apiKey) {
+        try {
+          visionResult = await runOpenAiVisionCommands({
+            page: body.page,
+            imageBase64: body.imageBase64,
+            imageMimeType: body.imageMimeType,
+            userMessage: body.message,
+            apiKey,
+            model: process.env.OPENAI_MODEL ?? "gpt-4o",
+          });
+          visionSource = "openai-vision";
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          return jsonResult({
+            assistantContent: `**OpenAI vision error:** ${msg}`,
+            page: body.page,
+            applied: 0,
+            errors: [],
+            toolArgumentsParsed: [],
+            source: "openai-vision-error",
+          });
+        }
+      }
+
+      if (!visionResult) {
+        return jsonResult({
+          assistantContent:
+            "No vision AI engine available. Set **OPENAI_API_KEY** (gpt-4o) or configure **Ollama** with a vision model (e.g. `llava`):\n" +
+            "```\nPAGE_BUILDER_CHAT_OLLAMA_URL=http://127.0.0.1:11434\nPAGE_BUILDER_CHAT_OLLAMA_VISION_MODEL=llava\n```",
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "vision-no-engine",
+        });
+      }
+
+      let assistantContent = visionResult.description;
+
+      const hasContent = visionResult.data.content.length > 0 || Object.keys(visionResult.data.zones).length > 0;
+      if (hasContent) {
+        const updatedPage: IPageStructure = {
+          ...body.page,
+          data: {
+            ...body.page.data,
+            content: visionResult.data.content as IPageStructure["data"]["content"],
+            root: visionResult.data.root as IPageStructure["data"]["root"],
+            zones: visionResult.data.zones as IPageStructure["data"]["zones"],
+          },
+          widgets: [
+            ...(body.page.widgets ?? []),
+            ...visionResult.widgets,
+          ],
+        };
+        assistantContent += formatCmsWidgetSuggestions(visionResult.cmsWidgetSuggestions);
+
+        return jsonResult({
+          assistantContent,
+          page: updatedPage,
+          errors: [],
+          applied: visionResult.data.content.length,
+          toolArgumentsParsed: [],
+          source: visionSource,
+        });
+      }
+
+      assistantContent += formatCmsWidgetSuggestions(visionResult.cmsWidgetSuggestions);
+      return jsonResult({
+        assistantContent: assistantContent || "Could not identify any widgets from the uploaded image. Try a clearer screenshot.",
+        page: body.page,
+        applied: 0,
+        errors: [],
+        toolArgumentsParsed: [],
+        source: visionSource,
       });
     }
 
