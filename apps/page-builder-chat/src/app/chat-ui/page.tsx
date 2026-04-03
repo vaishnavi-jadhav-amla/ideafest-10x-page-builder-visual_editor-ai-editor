@@ -6,11 +6,11 @@ import {
   isOpenAiChatReady,
   isPlainTextCommandsEnabled,
 } from "../../lib/chat-flags";
-import PuckEditorClient from "./puck-editor-client";
+import { ChatPageClientUI } from "../chat-page-client-ui";
 
 export default function PageBuilderChatUIPage() {
   return (
-    <PuckEditorClient
+    <ChatPageClientUI
       chatPanelEnabled={isChatPanelEnabled()}
       plainTextEnabled={isPlainTextCommandsEnabled()}
       openAiReady={isOpenAiChatReady()}

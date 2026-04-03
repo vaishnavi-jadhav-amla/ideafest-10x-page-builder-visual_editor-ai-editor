@@ -10,7 +10,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "apps/page-builder-chat",
-        "command": "node ../../node_modules/next/dist/bin/next dev --port 3000"
+        "command": "node ../../node_modules/next/dist/bin/next dev --port 4200"
       }
     },
     "dev-standalone": {
@@ -18,7 +18,7 @@
       "executor": "nx:run-commands",
       "options": {
         "cwd": "apps/page-builder-chat",
-        "command": "node ../../node_modules/next/dist/bin/next dev --port 3000"
+        "command": "node ../../node_modules/next/dist/bin/next dev --port 4200"
       }
     }
   }

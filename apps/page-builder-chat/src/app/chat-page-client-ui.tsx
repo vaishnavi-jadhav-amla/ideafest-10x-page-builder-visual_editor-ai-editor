@@ -202,7 +202,7 @@ function ZnodeLogo({ size = 36 }: { size?: number }) {
         flexShrink: 0,
       }}
     >
-      <span style={{ fontSize: size * 0.38, fontWeight: 800, color: "#16a34a", letterSpacing: -0.5 }}>zn0d</span>
+      <span style={{ fontSize: size * 0.38, fontWeight: 800, color: "#16a34a", letterSpacing: -0.5 }}>Z</span>
     </div>
   );
 }
@@ -240,7 +240,7 @@ export function ChatPageClientUI({ chatPanelEnabled, plainTextEnabled, openAiRea
     {
       role: "assistant",
       content:
-        "Hi! I'm your **Znode Page Builder AI**. I'll help you build pages faster. I can add and configure:\n\n" +
+        "Hi! I'm your **Znode Smart Assistant**. I'll help you build pages faster. I can add and configure:\n\n" +
         "\u2022 Banner Slider\n\u2022 Text Widget\n\u2022 Homepage Banner\n\n" +
         "What would you like to build today?",
     },
@@ -491,216 +491,209 @@ export function ChatPageClientUI({ chatPanelEnabled, plainTextEnabled, openAiRea
         <div style={styles.headerLeft}>
           <ZnodeLogo size={40} />
           <div>
-            <div style={styles.headerTitle}>Page Builder AI</div>
-            <div style={styles.headerSubtitle}>Znode Smart Assistant</div>
+            <div style={styles.headerTitle}>Znode Smart Assistant</div>
           </div>
         </div>
         <div style={styles.headerActions}>
-          <button
-            type="button"
-            onClick={() => void publishToPreview()}
-            disabled={publishLoading}
-            style={{
-              ...styles.headerBtn,
-              opacity: publishLoading ? 0.6 : 1,
-              cursor: publishLoading ? "wait" : "pointer",
-            }}
-            title="Publish to preview"
-          >
-            {publishLoading ? (
-              <span style={{ fontSize: 14 }}>...</span>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                <polyline points="16 6 12 2 8 6" />
-                <line x1="12" y1="2" x2="12" y2="15" />
-              </svg>
-            )}
-          </button>
-          {onClose && (
+          {/* {onClose && (
             <button type="button" onClick={onClose} style={styles.closeBtn} aria-label="Close" title="Close">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
             </button>
-          )}
+          )} */}
         </div>
       </div>
 
-        {/* ── Status bar ─────────────────────────────── */}
-        <div style={styles.statusBar}>
-          <span style={styles.statusDot} />
-          AI Active &mdash; Page Builder Ready
+      {/* ── Status bar ─────────────────────────────── */}
+      {/* <div style={styles.statusBar}>
+        <span style={styles.statusDot} />
+        AI Active &mdash; Page Builder Ready
+      </div> */}
+
+      {publishStatus && (
+        <div
+          style={{
+            padding: "8px 16px",
+            fontSize: "0.78rem",
+            background: publishStatus.startsWith("Success") ? "#f0fdf4" : "#fef2f2",
+            color: publishStatus.startsWith("Success") ? "#166534" : "#991b1b",
+            borderBottom: "1px solid var(--border)",
+          }}
+        >
+          {publishStatus}
         </div>
+      )}
 
-        {publishStatus && (
-          <div
-            style={{
-              padding: "8px 16px",
-              fontSize: "0.78rem",
-              background: publishStatus.startsWith("Success") ? "#f0fdf4" : "#fef2f2",
-              color: publishStatus.startsWith("Success") ? "#166534" : "#991b1b",
-              borderBottom: "1px solid var(--border)",
-            }}
-          >
-            {publishStatus}
-          </div>
-        )}
-
-        {/* ── Messages area ──────────────────────────── */}
-        <div style={styles.messagesArea}>
-          {messages.map((msg, i) =>
-            msg.role === "user" ? (
-              <div key={i} style={styles.userRow}>
-                <div style={styles.userBubble}>{msg.content}</div>
-              </div>
-            ) : (
-              <div key={i} style={styles.assistantRow}>
-                <ZnodeLogo size={32} />
-                <div style={styles.assistantBubble}>
-                  <div style={styles.assistantLabel}>ZNODE PAGE BUILDER AI</div>
-                  <div style={styles.assistantText}>
-                    {msg.content.split("\n").map((line, li) => (
-                      <div key={li} style={{ marginTop: li > 0 && line.trim() === "" ? 8 : 0 }}>
-                        {renderMarkdown(line)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )
-          )}
-
-          {loading && (
-            <div style={styles.assistantRow}>
+      {/* ── Messages area ──────────────────────────── */}
+      <div style={styles.messagesArea}>
+        {messages.map((msg, i) =>
+          msg.role === "user" ? (
+            <div key={i} style={styles.userRow}>
+              <div style={styles.userBubble}>{msg.content}</div>
+            </div>
+          ) : (
+            <div key={i} style={styles.assistantRow}>
               <ZnodeLogo size={32} />
               <div style={styles.assistantBubble}>
-                <TypingIndicator />
+                <div style={styles.assistantLabel}>ZNODE Smart Assistant</div>
+                <div style={styles.assistantText}>
+                  {msg.content.split("\n").map((line, li) => (
+                    <div key={li} style={{ marginTop: li > 0 && line.trim() === "" ? 8 : 0 }}>
+                      {renderMarkdown(line)}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
-          )}
+          )
+        )}
 
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* ── Error bar ──────────────────────────────── */}
-        {lastError && (
-          <div style={styles.errorBar}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="15" y1="9" x2="9" y2="15" />
-              <line x1="9" y1="9" x2="15" y2="15" />
-            </svg>
-            {lastError}
+        {loading && (
+          <div style={styles.assistantRow}>
+            <ZnodeLogo size={32} />
+            <div style={styles.assistantBubble}>
+              <TypingIndicator />
+            </div>
           </div>
         )}
 
-        {/* ── Banner slider chips ────────────────────── */}
-        {bannerSliderChoices && bannerSliderChoices.length > 0 && (
-          <div style={styles.pickerPanel}>
-            <div style={styles.pickerTitle}>Choose a Banner Slider</div>
-            <div style={styles.chipRow}>
-              {bannerSliderChoices.map((c, i) => (
-                <button
-                  key={`${i}-${c.masterWidgetKey}-${c.cmsSliderId}`}
-                  type="button"
-                  disabled={loading}
-                  onClick={() => void pickBannerSlider(c)}
-                  style={styles.chip}
-                >
-                  {c.label}
-                </button>
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* ── Error bar ──────────────────────────────── */}
+      {lastError && (
+        <div style={styles.errorBar}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="15" y1="9" x2="9" y2="15" />
+            <line x1="9" y1="9" x2="15" y2="15" />
+          </svg>
+          {lastError}
+        </div>
+      )}
+
+      {/* ── Banner slider chips ────────────────────── */}
+      {bannerSliderChoices && bannerSliderChoices.length > 0 && (
+        <div style={styles.pickerPanel}>
+          <div style={styles.pickerTitle}>Choose a Banner Slider</div>
+          <div style={styles.chipRow}>
+            {bannerSliderChoices.map((c, i) => (
+              <button key={`${i}-${c.masterWidgetKey}-${c.cmsSliderId}`} type="button" disabled={loading} onClick={() => void pickBannerSlider(c)} style={styles.chip}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Product carousel picker ────────────────── */}
+      {productCarousel !== null && (
+        <div style={{ ...styles.pickerPanel, maxHeight: 260, overflowY: "auto" }}>
+          <div style={styles.pickerTitle}>Select Products for Carousel</div>
+          {productCarousel.products.length === 0 ? (
+            <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>No unassociated products for this widget key.</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {productCarousel.products.map((p) => (
+                <label key={p.sku} style={styles.checkboxLabel}>
+                  <input
+                    type="checkbox"
+                    disabled={loading}
+                    checked={productCarousel.selectedSkus.includes(p.sku)}
+                    onChange={() => toggleProductCarouselSku(p.sku)}
+                    style={styles.checkbox}
+                  />
+                  <span>
+                    {p.name}
+                    <span style={{ display: "block", fontSize: "0.72rem", color: "var(--muted)" }}>{p.sku}</span>
+                  </span>
+                </label>
               ))}
             </div>
+          )}
+          <div style={{ ...styles.chipRow, marginTop: 12 }}>
+            <button type="button" disabled={loading || !productCarousel.hasMore} onClick={() => void loadMoreProductCarousel()} style={styles.chip}>
+              Show more
+            </button>
+            <button
+              type="button"
+              disabled={loading || productCarousel.selectedSkus.length === 0}
+              onClick={() => void confirmProductCarousel()}
+              style={{ ...styles.chip, background: "var(--accent)", color: "#fff", border: "none" }}
+            >
+              Add carousel
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* ── Product carousel picker ────────────────── */}
-        {productCarousel !== null && (
-          <div style={{ ...styles.pickerPanel, maxHeight: 260, overflowY: "auto" }}>
-            <div style={styles.pickerTitle}>Select Products for Carousel</div>
-            {productCarousel.products.length === 0 ? (
-              <div style={{ color: "var(--muted)", fontSize: "0.85rem" }}>No unassociated products for this widget key.</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {productCarousel.products.map((p) => (
-                  <label key={p.sku} style={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      disabled={loading}
-                      checked={productCarousel.selectedSkus.includes(p.sku)}
-                      onChange={() => toggleProductCarouselSku(p.sku)}
-                      style={styles.checkbox}
-                    />
-                    <span>
-                      {p.name}
-                      <span style={{ display: "block", fontSize: "0.72rem", color: "var(--muted)" }}>{p.sku}</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            )}
-            <div style={{ ...styles.chipRow, marginTop: 12 }}>
-              <button type="button" disabled={loading || !productCarousel.hasMore} onClick={() => void loadMoreProductCarousel()} style={styles.chip}>
-                Show more
-              </button>
-              <button
-                type="button"
-                disabled={loading || productCarousel.selectedSkus.length === 0}
-                onClick={() => void confirmProductCarousel()}
-                style={{ ...styles.chip, background: "var(--accent)", color: "#fff", border: "none" }}
-              >
-                Add carousel
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Input area ─────────────────────────────── */}
-        {chatPanelEnabled ? (
-          <div style={styles.inputArea}>
-            <div style={styles.inputRow}>
-              <input
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Type your message..."
-                style={styles.textInput}
-                disabled={loading}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void sendChat();
-                  }
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => void sendChat()}
-                disabled={loading || !chatInput.trim()}
-                style={{
-                  ...styles.sendBtn,
-                  opacity: loading || !chatInput.trim() ? 0.5 : 1,
-                  cursor: loading ? "wait" : "pointer",
-                }}
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="22" y1="2" x2="11" y2="13" />
-                  <polygon points="22 2 15 22 11 13 2 9 22 2" />
+      {/* ── Input area ─────────────────────────────── */}
+      {chatPanelEnabled ? (
+        <div style={styles.inputArea}>
+          <div style={styles.inputRow}>
+            <input
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Type your message..."
+              style={styles.textInput}
+              disabled={loading}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void sendChat();
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => void sendChat()}
+              disabled={loading || !chatInput.trim()}
+              style={{
+                ...styles.sendBtn,
+                opacity: loading || !chatInput.trim() ? 0.5 : 1,
+                cursor: loading ? "wait" : "pointer",
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => void publishToPreview()}
+              disabled={publishLoading}
+              style={{
+                ...styles.headerBtn,
+                opacity: publishLoading ? 0.6 : 1,
+                cursor: publishLoading ? "wait" : "pointer",
+              }}
+              title="Publish to preview"
+            >
+              {publishLoading ? (
+                <span style={{ fontSize: 14 }}>...</span>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="2" y1="12" x2="22" y2="12" />
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                 </svg>
-              </button>
-            </div>
-            <div style={styles.inputHint}>
-              Try: <strong>add banner slider</strong>, <strong>add text</strong>, <strong>set title</strong>, or ask anything
-            </div>
+              )}
+            </button>
           </div>
-        ) : (
-          <div style={styles.inputArea}>
-            <div style={styles.disabledNotice}>
-              Chat is currently off. Enable <strong>plain text</strong> mode, or configure <strong>Ollama</strong> / <strong>OpenAI</strong> to get started.
-            </div>
+          <div style={styles.inputHint}>
+            Try: <strong>add banner slider</strong>, <strong>add text</strong>, <strong>set title</strong>, or ask anything
           </div>
-        )}
+        </div>
+      ) : (
+        <div style={styles.inputArea}>
+          <div style={styles.disabledNotice}>
+            Chat is currently off. Enable <strong>plain text</strong> mode, or configure <strong>Ollama</strong> / <strong>OpenAI</strong> to get started.
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -709,14 +702,9 @@ export function ChatPageClientUI({ chatPanelEnabled, plainTextEnabled, openAiRea
 
 const styles: Record<string, CSSProperties> = {
   chatContainer: {
-    width: 420,
-    maxWidth: "100%",
-    height: "100%",
-    maxHeight: "100%",
-    borderRadius: 16,
+    width: "100%",
+    height: "100vh",
     background: "var(--panel)",
-    boxShadow: "var(--shadow)",
-    border: "1px solid var(--border)",
     display: "flex",
     flexDirection: "column",
     overflow: "hidden",
