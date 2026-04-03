@@ -2,7 +2,7 @@
 
 import type { Data } from "@measured/puck";
 import { PageEditor } from "@znode/page-builder";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { setPage } from "@znode/page-builder/utils/set-page";
 import { SessionProvider } from "next-auth/react";
 import { OverlayLoader } from "@znode/base-components/common/loader-component";
@@ -19,9 +19,50 @@ interface IClientProps {
   contentPageCode?: string;
   mode?: string;
 }
+/** postMessage category emitted by PageEditor.onChangeDataToParentIframe */
+const NOTIFY_VISUAL_EDITOR_CHANGES = "notify_visual_editor_changes";
+
 function Client(props: Readonly<IClientProps>) {
   const { url, themeName, pageStructure } = props || {};
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  /**
+   * Mirrors the live page state so the AI chat always receives up-to-date data.
+   * Updated via the `notify_visual_editor_changes` postMessage from PageEditor.
+   */
+  const [currentPageStructure, setCurrentPageStructure] = useState<IPageStructure>(pageStructure);
+  /**
+   * Bumping this key forces the Puck editor to remount with new data when the AI
+   * chat pushes a page update.
+   */
+  const [editorKey, setEditorKey] = useState(0);
+
+  /**
+   * PageEditor broadcasts every Puck change to window.parent via postMessage
+   * (category: "notify_visual_editor_changes"). In standalone mode window.parent
+   * === window, so the event lands here. We capture it to keep currentPageStructure
+   * in sync, which the AI chat iframe reads via the page prop on AiChatIframe.
+   */
+  useEffect(() => {
+    function handleEditorChange(event: MessageEvent) {
+      if (event.data?.category !== NOTIFY_VISUAL_EDITOR_CHANGES) return;
+      const pageJson = event.data?.data?.pageJson as IPageStructure | undefined;
+      if (pageJson && typeof pageJson === "object") {
+        setCurrentPageStructure(pageJson);
+      }
+    }
+    window.addEventListener("message", handleEditorChange);
+    return () => window.removeEventListener("message", handleEditorChange);
+  }, []);
+
+  /**
+   * Called by AiChatIframe when the AI chat produces an updated page structure.
+   * Applying the new structure requires remounting Puck (editorKey bump) because
+   * the `data` prop in Puck is used only as initial state.
+   */
+  const handlePageUpdateFromChat = useCallback((updatedPage: IPageStructure) => {
+    setCurrentPageStructure(updatedPage);
+    setEditorKey((k) => k + 1);
+  }, []);
 
   // Prevent scroll events from changing input[type="number"] values
   useEffect(() => {
@@ -93,7 +134,8 @@ function Client(props: Readonly<IClientProps>) {
   return (
     <SessionProvider>
       <PageEditor
-        pageStructure={pageStructure}
+        key={editorKey}
+        pageStructure={currentPageStructure}
         onPublish={publishHandler}
         configParams={{
           theme: props.themeName,
@@ -102,7 +144,7 @@ function Client(props: Readonly<IClientProps>) {
         mode={props?.mode}
       />
 
-      <AiChatIframe />
+      <AiChatIframe page={currentPageStructure} onPageUpdate={handlePageUpdateFromChat} />
       {isLoading && <OverlayLoader color="#fff" />}
     </SessionProvider>
   );
