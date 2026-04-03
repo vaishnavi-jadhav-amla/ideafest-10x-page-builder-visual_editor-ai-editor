@@ -76,7 +76,7 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
     componentType: "Container",
     category: "ui",
     description:
-      "Flexible layout container (Flex). Supports flexDirection (row/column), gap, alignment, max-width, padding, margin, border, and background image. Child widgets go in zone '{id}:Container'.",
+      "Flexible layout container (Flex). Supports flexDirection (row/column), gap, alignment, max-width, padding, margin, border, background color (image.backgroundColor), and background image. Child widgets go in zone '{id}:Container'.",
     requiresCmsPicker: false,
     visualHint:
       "Use when the image shows a layout section, boxed area, or a group of elements organized in a row or column. Good for wrapping multiple widgets.",
@@ -106,6 +106,7 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
+        backgroundColor: "",
       },
     },
   },
@@ -262,7 +263,7 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
     visualHint:
       "Use when the image shows a standalone image/photo/graphic that is not part of a slider or carousel.",
     defaultProps: {
-      image: "",
+      image: "/_next/static/media/no-image.610b4c69.png",
       alt: "",
       url: "",
       layout: "fixed",
@@ -271,6 +272,8 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
       alignment: "start",
       borderRadius: "0px",
       target: "_self",
+      locale: { "en-US": { image: "/_next/static/media/no-image.610b4c69.png", alt: "" } },
+      readOnly: { width: false, height: false, alignment: false },
     },
   },
   {
@@ -282,9 +285,10 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
     visualHint:
       "Use when the image shows a video player, video embed, or video thumbnail with play button.",
     defaultProps: {
-      video: "",
+      video: "/_next/static/media/no-image.610b4c69.png",
       autoPlay: false,
       controlEnable: true,
+      locale: { "en-US": { video: "/_next/static/media/no-image.610b4c69.png" } },
     },
   },
   {
@@ -297,7 +301,7 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
       "Use when the image shows a hero banner section, image carousel, slideshow, rotating banners, or any full-width image slider at the top of a page.",
     defaultProps: {
       axis: "horizontal",
-      showThumbs: false,
+      showThumbs: true,
       showArrows: true,
       autoFocus: false,
       infiniteLoop: true,
@@ -311,7 +315,7 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
       swipeable: true,
       useKeyboardArrows: true,
       emulateTouch: true,
-      autoPlay: false,
+      autoPlay: true,
       response: null,
       config: {
         type: "Widget",
@@ -390,6 +394,7 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
     visualHint:
       "Use when the image shows brand logos, vendor logos, or a 'Shop by Brand' section.",
     defaultProps: {
+      displayBrandName: true,
       spaceBetween: 10,
       slidesPerView: 5,
       hasNavigationEnable: true,
@@ -468,7 +473,7 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
     visualHint:
       "Use when the image shows an advertisement area, sponsored content section, or ad banner.",
     defaultProps: {
-      response: { data: [] },
+      response: null,
       config: {
         type: "Widget",
         id: "AdSpaceWidget",
@@ -520,6 +525,8 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
       label: "SIGN UP FOR EMAIL",
       placeholder: "Your Email Address",
       buttonText: "Join",
+      margin: { top: "0", right: "0", bottom: "0", left: "0" },
+      padding: { top: "0", right: "0", bottom: "0", left: "0" },
     },
   },
   {
@@ -532,6 +539,7 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
       "Use when the image shows a form with input fields, a contact form, or a submission form.",
     defaultProps: {
       formCode: "",
+      response: null,
       config: {
         type: "Widget",
         id: "FormWidget",

@@ -25,6 +25,7 @@ interface IImageConfig {
   backgroundSize?: "cover" | "contain" | "auto";
   backgroundPosition?: "center" | "top" | "bottom" | "left" | "right";
   backgroundRepeat?: "no-repeat" | "repeat" | "repeat-x" | "repeat-y";
+  backgroundColor?: string;
 }
 
 interface IAlignment {
@@ -240,6 +241,13 @@ export const FlexConfig: ComponentConfig<IFlexConfig> = {
             { label: "Repeat Y", value: "repeat-y" },
           ],
         },
+        backgroundColor: {
+          label: "Background Color",
+          type: "custom",
+          render: ({ onChange, value }) => {
+            return <ColorPicker label="Background Color" value={value ?? ""} onChange={(color: string) => onChange(color)} />;
+          },
+        },
       },
     },
     margin: {
@@ -367,6 +375,7 @@ export const FlexConfig: ComponentConfig<IFlexConfig> = {
       backgroundSize: "cover",
       backgroundPosition: "center",
       backgroundRepeat: "no-repeat",
+      backgroundColor: "",
     },
   },
   resolveData: async ({ props }) => {

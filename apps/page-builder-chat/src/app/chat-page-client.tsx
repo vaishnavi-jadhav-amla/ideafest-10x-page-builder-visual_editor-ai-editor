@@ -850,23 +850,6 @@ export function ChatPageClient({
                     >
                       Remove
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => void sendImageForAnalysis()}
-                      disabled={loading}
-                      style={{
-                        padding: "4px 12px",
-                        borderRadius: 6,
-                        border: "none",
-                        background: "var(--accent)",
-                        color: "#fff",
-                        fontWeight: 600,
-                        cursor: loading ? "wait" : "pointer",
-                        fontSize: "0.8rem",
-                      }}
-                    >
-                      {loading ? "Analyzing…" : "Analyze image"}
-                    </button>
                   </div>
                 )}
                 <input
