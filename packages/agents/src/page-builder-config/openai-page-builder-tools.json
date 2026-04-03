@@ -3,7 +3,7 @@
     "type": "function",
     "function": {
       "name": "apply_page_builder_commands",
-      "description": "Apply a list of declarative edits to a Znode Puck page structure (IPageStructure). Operates on a copy: merge root props, clear or append/remove/update components in main canvas, header, or footer, set page key, or replace zone slots. Output JSON must use the exact property names below (camelCase) so it matches parsePageBuilderCommands / applyPageBuilderCommands in @znode/agents/page-builder-config. Component identity is props.id. append_component generates an id when id is omitted.",
+      "description": "Required for every user turn about this page. Apply declarative edits to a copy of the Znode Puck page (IPageStructure): merge root props, clear or append/remove/update components in main/header/footer, set page key, or replace zones. Use commands: [] only when the message is not a page edit or cannot be done. For existing blocks, use merge_component_props with props.id as componentId; append_component creates NEW blocks. Property names: camelCase as below (server also accepts snake_case kind strings). append_component adds props.id when id is omitted.",
       "parameters": {
         "type": "object",
         "additionalProperties": false,

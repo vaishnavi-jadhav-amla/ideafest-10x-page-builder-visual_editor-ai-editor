@@ -5,7 +5,7 @@ const SYSTEM = `Page builder assistant. Reply with ONLY one JSON object (no mark
 Kinds (snake_case): set_page_key, merge_root_props, clear_content, append_component, remove_component, merge_component_props, replace_zones. target: main|header|footer (merge/remove on main canvas may omit target; server uses main).
 Visible copy: append_component Heading, Text, ButtonGroup (PascalCase), target main. If the user asks for BOTH a heading and body text, output TWO append_component entries in order: Heading first, then Text.
 **Home Page Promo** / **homepage promo** (misspellings e.g. hompage, hoem page, pormo): do NOT output Heading or Text for that. Output {"commands":[]} only — the host retries with a server shortcut when the list is empty.
-If the user names an existing block id (e.g. Heading-…-uuid) to change style/alignment/color/size: use merge_component_props ONLY — never append_component (append creates a NEW block).
+If the user names an existing block id (e.g. Heading-…-uuid or Heading-<timestamp>-<shortId>) to change style/alignment/color/size: use merge_component_props ONLY — never append_component (append creates a NEW block).
 Example edit: {"commands":[{"kind":"merge_component_props","target":"main","componentId":"Heading-…","props":{"align":"center","textColor":"red","level":"4"}}]}
 New block example: {"commands":[{"kind":"append_component","target":"main","componentType":"Heading","props":{"align":"left","text":"Hello","size":"l","background":"transparent","textColor":"black","level":"2"}}]}`;
 
@@ -175,9 +175,9 @@ function finishParse(content: string, userRequest: string): unknown[] {
   return rewriteAppendToMergeWhenUserTargetedExistingBlock(userRequest, supplemented);
 }
 
-/** Puck-style component ids in saved JSON (e.g. Heading-aab6124c-37b5-4393-b614-0b98d22c7adc). */
+/** Puck-style ids: UUID (Puck) or plain-text widget ids (Type-<timestamp>-<random>). */
 const PUCK_BLOCK_ID_RE =
-  /\b([A-Za-z][A-Za-z0-9]*-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i;
+  /\b([A-Za-z][A-Za-z0-9]*-(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|\d{10,}-[a-z0-9]+))\b/i;
 
 function extractExplicitPuckBlockIdFromUserMessage(s: string): string | null {
   const m = s.match(PUCK_BLOCK_ID_RE);

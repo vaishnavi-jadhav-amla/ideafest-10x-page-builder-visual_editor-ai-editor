@@ -165,6 +165,18 @@ type ProductCarouselPickerPayload = {
 
 type ProductCarouselUiState = ProductCarouselPickerPayload & { selectedSkus: string[] };
 
+type LinkPanelUiState = {
+  url: string;
+  displayName: string;
+  /** After CMS **Submit**: show "Add more?" + **Finalise** (page JSON), not before. */
+  afterCmsSave: boolean;
+  /**
+   * First successful **Submit** sets this `WidgetsKey`; every later **Submit** in the session reuses it so the gateway
+   * payload stays the same except `Title` / `Url`. **Finalise** writes this key into the page JSON.
+   */
+  sessionWidgetsKey: string | null;
+};
+
 function mergeProductCarouselPicker(
   prev: ProductCarouselUiState | null,
   incoming: ProductCarouselPickerPayload
@@ -194,6 +206,9 @@ type ChatApiJson = {
   /** Next slider chip click updates this BannerSlider id instead of appending. */
   bannerSliderUpdateComponentId?: string;
   productCarouselPicker?: ProductCarouselPickerPayload;
+  showLinkPanelForm?: boolean;
+  source?: string;
+  linkPanelSessionWidgetsKey?: string;
 };
 
 /** Deep-clone page from API JSON so React always sees a new reference and nested updates are plain objects. */
@@ -278,6 +293,7 @@ export function ChatPageClient({
   const [bannerSliderChoices, setBannerSliderChoices] = useState<BannerSliderChoice[] | null>(null);
   const [bannerSliderUpdateComponentId, setBannerSliderUpdateComponentId] = useState<string | null>(null);
   const [productCarousel, setProductCarousel] = useState<ProductCarouselUiState | null>(null);
+  const [linkPanel, setLinkPanel] = useState<LinkPanelUiState | null>(null);
 
   const pushAssistant = useCallback((content: string) => {
     setMessages((m) => [...m, { role: "assistant", content }]);
@@ -322,6 +338,7 @@ export function ChatPageClient({
     setBannerSliderChoices(null);
     setBannerSliderUpdateComponentId(null);
     setProductCarousel(null);
+    setLinkPanel(null);
     setLastError(null);
     setMessages((m) => [
       ...m,
@@ -437,6 +454,7 @@ export function ChatPageClient({
     const count = selectedSkus.length;
     setLastError(null);
     setProductCarousel(null);
+    setLinkPanel(null);
     setMessages((m) => [...m, { role: "user", content: `[products carousel] ${count} product(s)` }]);
     setLoading(true);
     try {
@@ -477,6 +495,107 @@ export function ChatPageClient({
     }
   }, [loading, page, productCarousel, pushAssistant]);
 
+  const submitLinkPanel = useCallback(async () => {
+    if (loading || !linkPanel) {
+      return;
+    }
+    const url = linkPanel.url.trim();
+    const displayName = linkPanel.displayName.trim();
+    if (!url || !displayName) {
+      return;
+    }
+    setLastError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          page,
+          linkWidgetSubmit: {
+            url,
+            displayName,
+            ...(linkPanel.sessionWidgetsKey?.trim()
+              ? { reuseWidgetsKey: linkPanel.sessionWidgetsKey.trim() }
+              : {}),
+          },
+        }),
+        cache: "no-store",
+      });
+      const data = (await res.json()) as ChatApiJson;
+      if (!res.ok) {
+        setLastError(data.error ?? res.statusText);
+        pushAssistant(`Error: ${data.error ?? res.statusText}`);
+        return;
+      }
+      if (data.showLinkPanelForm) {
+        if (data.source === "link-widget-save-ok") {
+          setLinkPanel((prev) => ({
+            url: "",
+            displayName: "",
+            afterCmsSave: true,
+            sessionWidgetsKey: prev?.sessionWidgetsKey ?? data.linkPanelSessionWidgetsKey ?? null,
+          }));
+        } else if (data.source === "link-widget-save-error") {
+          setLinkPanel((prev) => prev ?? { url, displayName, afterCmsSave: false, sessionWidgetsKey: null });
+        } else {
+          setLinkPanel({ url: "", displayName: "", afterCmsSave: false, sessionWidgetsKey: null });
+        }
+      }
+      pushAssistant(formatChatAssistantReply(data.assistantContent, data.applied, data.errors));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setLastError(msg);
+      pushAssistant(`Request failed: ${msg}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, page, linkPanel, pushAssistant]);
+
+  const finaliseLinkPanelOnPage = useCallback(async () => {
+    if (loading || !linkPanel?.sessionWidgetsKey?.trim()) {
+      return;
+    }
+    const widgetsKey = linkPanel.sessionWidgetsKey.trim();
+    setLastError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          page,
+          applyLinkPanelPageUpdate: { widgetsKey },
+        }),
+        cache: "no-store",
+      });
+      const data = (await res.json()) as ChatApiJson;
+      if (!res.ok) {
+        setLastError(data.error ?? res.statusText);
+        pushAssistant(`Error: ${data.error ?? res.statusText}`);
+        return;
+      }
+      const nextPage = pageFromApiPayload(data.page);
+      if (nextPage !== null) {
+        setPage(nextPage);
+      }
+      const appliedNdjson = commandsToNdjson(data.toolArgumentsParsed?.[0]?.commands);
+      if (appliedNdjson) {
+        setCommandsInput(appliedNdjson);
+      }
+      if (data.showLinkPanelForm && data.source === "link-panel-page-update-ok") {
+        setLinkPanel({ url: "", displayName: "", afterCmsSave: false, sessionWidgetsKey: null });
+      }
+      pushAssistant(formatChatAssistantReply(data.assistantContent, data.applied, data.errors));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setLastError(msg);
+      pushAssistant(`Request failed: ${msg}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, page, linkPanel, pushAssistant]);
+
   const sendChat = async () => {
     const text = chatInput.trim();
     if (!text || loading) return;
@@ -484,6 +603,7 @@ export function ChatPageClient({
     setBannerSliderChoices(null);
     setBannerSliderUpdateComponentId(null);
     setProductCarousel(null);
+    setLinkPanel(null);
     setMessages((m) => [...m, { role: "user", content: text }]);
     setChatInput("");
     setLoading(true);
@@ -517,6 +637,22 @@ export function ChatPageClient({
       }
       if (data.productCarouselPicker) {
         setProductCarousel((prev) => mergeProductCarouselPicker(prev, data.productCarouselPicker!));
+      }
+      if (data.showLinkPanelForm) {
+        if (data.source === "link-widget-save-ok") {
+          setLinkPanel((prev) => ({
+            url: "",
+            displayName: "",
+            afterCmsSave: true,
+            sessionWidgetsKey: prev?.sessionWidgetsKey ?? data.linkPanelSessionWidgetsKey ?? null,
+          }));
+        } else if (data.source === "link-widget-save-error") {
+          setLinkPanel((prev) => prev ?? { url: "", displayName: "", afterCmsSave: false, sessionWidgetsKey: null });
+        } else if (data.source === "link-panel-page-update-ok") {
+          setLinkPanel({ url: "", displayName: "", afterCmsSave: false, sessionWidgetsKey: null });
+        } else {
+          setLinkPanel({ url: "", displayName: "", afterCmsSave: false, sessionWidgetsKey: null });
+        }
       }
       pushAssistant(formatChatAssistantReply(data.assistantContent, data.applied, data.errors));
     } catch (e) {
@@ -665,6 +801,138 @@ export function ChatPageClient({
             </div>
           )}
 
+          {linkPanel !== null && (
+            <div
+              style={{
+                padding: "10px 16px",
+                borderTop: "1px solid var(--border)",
+                background: "var(--bg)",
+                fontSize: "0.8rem",
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>Link panel — CMS link configuration</div>
+              {linkPanel.afterCmsSave ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ color: "var(--muted)" }}>
+                    Link saved to CMS. <strong>Add more</strong> opens the form to save another link (same API).{" "}
+                    <strong>Finalise</strong> updates the page JSON (LinkPanel <code>widgetKey</code>) using the shared
+                    session key (same for every link you add here).
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={() =>
+                        setLinkPanel((p) =>
+                          p ? { ...p, url: "", displayName: "", afterCmsSave: false } : p
+                        )
+                      }
+                      style={{ ...chipButtonStyle, borderColor: "var(--accent)" }}
+                    >
+                      Add more
+                    </button>
+                    <button
+                      type="button"
+                      disabled={loading || !linkPanel.sessionWidgetsKey?.trim()}
+                      onClick={() => void finaliseLinkPanelOnPage()}
+                      style={{
+                        ...chipButtonStyle,
+                        borderColor: "var(--accent)",
+                        color: "#fff",
+                        background: "var(--accent)",
+                        opacity: loading || !linkPanel.sessionWidgetsKey?.trim() ? 0.5 : 1,
+                        cursor:
+                          loading || !linkPanel.sessionWidgetsKey?.trim() ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      Finalise
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
+                  <div style={{ color: "var(--muted)", fontSize: "0.78rem", lineHeight: 1.4 }}>
+                    <strong>Submit</strong> calls <code>CreateUpdateLinkWidgetConfiguration</code>. The first submit in
+                    this panel picks a <code>WidgetsKey</code>; after <strong>Add more</strong>, only{" "}
+                    <strong>Title</strong> and <strong>Url</strong> change — other gateway fields stay the same. Use{" "}
+                    <strong>Finalise</strong> when you want the page JSON updated.
+                  </div>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span style={{ fontWeight: 500 }}>URL</span>
+                    <input
+                      type="text"
+                      inputMode="url"
+                      value={linkPanel.url}
+                      onChange={(e) => setLinkPanel((p) => (p ? { ...p, url: e.target.value } : p))}
+                      placeholder="https://…"
+                      disabled={loading}
+                      style={{
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: "1px solid var(--border)",
+                        background: "var(--bg)",
+                        color: "var(--text)",
+                      }}
+                    />
+                  </label>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span style={{ fontWeight: 500 }}>Display name (link title)</span>
+                    <input
+                      type="text"
+                      value={linkPanel.displayName}
+                      onChange={(e) => setLinkPanel((p) => (p ? { ...p, displayName: e.target.value } : p))}
+                      placeholder="Maps to CMS Title (visible link text)"
+                      disabled={loading}
+                      style={{
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        border: "1px solid var(--border)",
+                        background: "var(--bg)",
+                        color: "var(--text)",
+                      }}
+                    />
+                  </label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                    <button
+                      type="button"
+                      disabled={loading || !linkPanel.url.trim() || !linkPanel.displayName.trim()}
+                      onClick={() => void submitLinkPanel()}
+                      style={{
+                        ...chipButtonStyle,
+                        borderColor: "var(--accent)",
+                        color: "#fff",
+                        background: "var(--accent)",
+                        cursor:
+                          loading || !linkPanel.url.trim() || !linkPanel.displayName.trim()
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity: loading || !linkPanel.url.trim() || !linkPanel.displayName.trim() ? 0.5 : 1,
+                      }}
+                    >
+                      Submit
+                    </button>
+                    {linkPanel.sessionWidgetsKey?.trim() ? (
+                      <button
+                        type="button"
+                        disabled={loading || !linkPanel.sessionWidgetsKey?.trim()}
+                        onClick={() => void finaliseLinkPanelOnPage()}
+                        style={{
+                          ...chipButtonStyle,
+                          borderColor: "var(--accent)",
+                          color: "var(--accent)",
+                          opacity: loading ? 0.5 : 1,
+                          cursor: loading ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        Finalise
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {productCarousel !== null && (
             <div
               style={{
@@ -731,9 +999,11 @@ export function ChatPageClient({
             {chatPanelEnabled ? (
               <>
                 <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: 8 }}>
-                  Chat — try <code>add banner slider</code>, <code>add products</code> /{" "}
-                  <code>add product carousel</code>, <code>set title …</code>, <code>add text …</code>,{" "}
-                  <code>help</code>. Free-form uses Ollama/OpenAI when configured.
+                  Chat — try <code>add banner slider</code> / <code>add banner</code> / <code>add BannerSlider</code>,{" "}
+                  <code>add link panel</code> / <code>add links</code> /{" "}
+                  <code>add link</code>, <code>add products</code> / <code>add product carousel</code>,{" "}
+                  <code>set title …</code>, <code>add text …</code>, <code>help</code>. Free-form uses Ollama/OpenAI
+                  when configured.
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
                   <textarea

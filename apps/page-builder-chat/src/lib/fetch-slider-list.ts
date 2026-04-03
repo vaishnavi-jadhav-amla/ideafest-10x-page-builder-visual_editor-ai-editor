@@ -1,5 +1,6 @@
 import dns from "node:dns";
 import https from "node:https";
+import { randomUUID } from "node:crypto";
 import { URL } from "node:url";
 
 dns.setDefaultResultOrder("ipv4first");
@@ -14,6 +15,9 @@ const DEFAULT_GET_CMS_WIDGET_SLIDER_BANNER_URL =
 
 const DEFAULT_SAVE_CMS_CONTAINER_DETAILS_URL =
   "https://apigateways-z10-dev10.znodecorp.com/CMSWidgetConfiguration/SaveCmsContainerDetails";
+
+const DEFAULT_CREATE_UPDATE_LINK_WIDGET_URL =
+  "https://apigateways-z10-dev10.znodecorp.com/CMSWidgetConfiguration/CreateUpdateLinkWidgetConfiguration";
 
 /** One row from SliderList: master key for Puck + gateway row id for SaveCMSWidgetSliderBanner. */
 export type BannerSliderChoice = {
@@ -70,7 +74,7 @@ function isGatewayCurlDebugEnabled(): boolean {
 /** Logs a copy-paste curl when PAGE_BUILDER_DEBUG_GATEWAY_CURL=1 (may include Basic auth — do not commit logs). */
 function logGatewayCurlEquivalent(
   label: string,
-  method: "GET" | "PUT",
+  method: "GET" | "PUT" | "POST",
   url: string,
   headers: Record<string, string>,
   jsonBody?: string
@@ -86,7 +90,7 @@ function logGatewayCurlEquivalent(
   for (const [k, v] of Object.entries(headers)) {
     parts.push(`--header ${JSON.stringify(`${k}: ${v}`)}`);
   }
-  if (method === "PUT" && jsonBody !== undefined) {
+  if ((method === "PUT" || method === "POST") && jsonBody !== undefined) {
     if (!headers["Content-Type"] && !headers["content-type"]) {
       parts.push(`--header ${JSON.stringify("Content-Type: application/json")}`);
     }
@@ -143,6 +147,47 @@ function httpsPutJson(
         headers: {
           ...headers,
           "Content-Type": "application/json",
+          "Content-Length": Buffer.byteLength(body, "utf8"),
+        },
+        servername: url.hostname,
+        ...(insecure ? { rejectUnauthorized: false } : {}),
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () => {
+          resolve({
+            statusCode: res.statusCode ?? 500,
+            body: Buffer.concat(chunks).toString("utf8"),
+          });
+        });
+      }
+    );
+    req.on("error", reject);
+    req.write(body, "utf8");
+    req.end();
+  });
+}
+
+function httpsPostJson(
+  urlStr: string,
+  headers: Record<string, string>,
+  payload: Record<string, unknown>,
+  contentType = "application/json"
+): Promise<{ statusCode: number; body: string }> {
+  const body = JSON.stringify(payload);
+  const url = new URL(urlStr);
+  const insecure = useInsecureTlsForSliderUpstream();
+  return new Promise((resolve, reject) => {
+    const req = https.request(
+      {
+        hostname: url.hostname,
+        port: url.port || 443,
+        path: `${url.pathname}${url.search}`,
+        method: "POST",
+        headers: {
+          ...headers,
+          "Content-Type": contentType,
           "Content-Length": Buffer.byteLength(body, "utf8"),
         },
         servername: url.hostname,
@@ -1221,10 +1266,17 @@ export function isAddBannerSliderChatIntent(message: string): boolean {
   if (!m) {
     return false;
   }
+  /** `add banner` but not the longer phrase `add banner slider` (handled separately). */
+  const addBannerOnly = /\badd\s+(a\s+)?banner\b(?!\s+slider\b)/;
   return (
     /\badd\s+(a\s+)?banner\s+slider\b/.test(m) ||
+    /\badd\s+(a\s+)?bannerslider\b/.test(m) ||
+    addBannerOnly.test(m) ||
     /^\s*banner\s+slider\s*$/i.test(message.trim()) ||
-    /\binsert\s+banner\s+slider\b/.test(m)
+    /^\s*bannerslider\s*$/i.test(message.trim()) ||
+    /\binsert\s+banner\s+slider\b/.test(m) ||
+    /\binsert\s+(a\s+)?bannerslider\b/.test(m) ||
+    /\binsert\s+(a\s+)?banner\b(?!\s+slider\b)/.test(m)
   );
 }
 
@@ -1299,4 +1351,123 @@ export function buildBannerSliderAppendCommand(opts: {
       },
     },
   };
+}
+
+export function isAddLinkPanelChatIntent(message: string): boolean {
+  const m = message.trim().toLowerCase();
+  if (!m) {
+    return false;
+  }
+  return (
+    /\badd\s+link\s+panel\b/.test(m) ||
+    /\badd\s+links\b/.test(m) ||
+    /^\s*add\s+link\s*$/i.test(message.trim()) ||
+    /^\s*link\s+panel\s*$/i.test(message.trim()) ||
+    /\badd\s+a\s+link\b/.test(m)
+  );
+}
+
+function envBool(name: string, defaultVal: boolean): boolean {
+  const raw = process.env[name]?.trim().toLowerCase();
+  if (raw === "1" || raw === "true" || raw === "yes") {
+    return true;
+  }
+  if (raw === "0" || raw === "false" || raw === "no") {
+    return false;
+  }
+  return defaultVal;
+}
+
+/**
+ * POST CreateUpdateLinkWidgetConfiguration — `Content-Type: application/json` (current gateway sample).
+ * Form **display name** → `Title`; panel label → `DisplayName` / `WidgetName` (env, default **Link Panel**).
+ * Pass **reuseWidgetsKey** (same session as first submit) so only `Title` / `Url` change for additional links.
+ */
+export async function createUpdateLinkWidgetConfigurationToGateway(params: {
+  url: string;
+  displayName: string;
+  /** Same `WidgetsKey` as the first link in this session — keeps all other payload fields aligned. */
+  reuseWidgetsKey?: string;
+}): Promise<{ ok: true; widgetsKey: string } | { ok: false; status: number; body: string }> {
+  const master = process.env.PAGE_BUILDER_LINK_PANEL_MASTER_KEY?.trim() || "2253";
+  const reuse = typeof params.reuseWidgetsKey === "string" ? params.reuseWidgetsKey.trim() : "";
+  const widgetsKey = reuse || `${master}-${randomUUID()}`;
+
+  const skip =
+    process.env.PAGE_BUILDER_SKIP_CREATE_UPDATE_LINK_WIDGET === "true" ||
+    process.env.PAGE_BUILDER_SKIP_CREATE_UPDATE_LINK_WIDGET === "1";
+  if (skip) {
+    return { ok: true, widgetsKey };
+  }
+
+  const endpoint =
+    process.env.PAGE_BUILDER_CREATE_UPDATE_LINK_WIDGET_URL?.trim() || DEFAULT_CREATE_UPDATE_LINK_WIDGET_URL;
+  const authRaw =
+    process.env.PAGE_BUILDER_SLIDER_AUTHORIZATION?.trim() ||
+    process.env.PAGE_BUILDER_PUBLISH_PREVIEW_AUTHORIZATION?.trim();
+  if (!authRaw) {
+    return {
+      ok: false,
+      status: 401,
+      body: "missing_auth: set PAGE_BUILDER_SLIDER_AUTHORIZATION or PAGE_BUILDER_PUBLISH_PREVIEW_AUTHORIZATION",
+    };
+  }
+  const authorization = authRaw.startsWith("Basic ") ? authRaw : `Basic ${authRaw}`;
+
+  const title = params.displayName.trim();
+  const urlStr = params.url.trim();
+  const localeId = envInt(
+    "PAGE_BUILDER_LINK_WIDGET_LOCALE_ID",
+    envInt("PAGE_BUILDER_PRODUCT_LIST_LOCALE_ID", 1)
+  );
+  const portalId = envInt("PAGE_BUILDER_PORTAL_ID", 0);
+  const panelLabel =
+    process.env.PAGE_BUILDER_LINK_PANEL_DISPLAY_NAME?.trim() ||
+    process.env.PAGE_BUILDER_LINK_PANEL_WIDGET_NAME?.trim() ||
+    "Link Panel";
+  const displayOrder = envInt("PAGE_BUILDER_LINK_WIDGET_DISPLAY_ORDER", 999);
+
+  const payload: Record<string, unknown> = {
+    CMSWidgetTitleConfigurationId: 0,
+    CMSWidgetsId: envInt("PAGE_BUILDER_CMS_WIDGETS_ID", 0),
+    CMSWidgetCode: "LinkPanel",
+    PortalId: portalId,
+    MediaId: 0,
+    Title: title,
+    Url: urlStr,
+    MediaPath: null,
+    CMSMappingId: envInt("PAGE_BUILDER_CMS_MAPPING_ID", 7),
+    WidgetsKey: widgetsKey,
+    WidgetCode: null,
+    TypeOFMapping: process.env.PAGE_BUILDER_CMS_TYPE_OF_MAPPING?.trim() || "PortalMapping",
+    DisplayName: panelLabel,
+    WidgetName: panelLabel,
+    IsActive: envBool("PAGE_BUILDER_LINK_WIDGET_IS_ACTIVE", false),
+    LocaleId: localeId,
+    TitleCode: null,
+    CMSWidgetTitleConfigurationLocaleId: 0,
+    Image: null,
+    IsNewTab: envBool("PAGE_BUILDER_LINK_WIDGET_IS_NEW_TAB", false),
+    DisplayOrder: displayOrder,
+    EnableCMSPreview: envBool("PAGE_BUILDER_LINK_WIDGET_ENABLE_CMS_PREVIEW", false),
+  };
+
+  const headers: Record<string, string> = {
+    Authorization: authorization,
+    "Content-Type": "application/json",
+  };
+  logGatewayCurlEquivalent("POST CreateUpdateLinkWidgetConfiguration", "POST", endpoint, headers, JSON.stringify(payload));
+
+  let res: { statusCode: number; body: string };
+  try {
+    res = await httpsPostJson(endpoint, headers, payload);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, status: 0, body: msg };
+  }
+
+  if (res.statusCode < 200 || res.statusCode >= 300) {
+    return { ok: false, status: res.statusCode, body: res.body.slice(0, 800) };
+  }
+  return { ok: true, widgetsKey };
 }

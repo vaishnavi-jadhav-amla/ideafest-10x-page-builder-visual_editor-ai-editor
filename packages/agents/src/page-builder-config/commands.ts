@@ -500,8 +500,13 @@ function removeComponentByIdFromArray(arr: Data["content"], componentId: string)
 /**
  * Znode saved pages keep `widgets[]` in sync with Widget props (see visual-editor / publish JSON).
  * Register master + instance widgetKey entries when appending a Puck block with config.type === "Widget".
+ * Call after **merge** updates to `widgetConfig.widgetKey` so `page.widgets` stays in sync.
  */
-function registerWidgetsFromPuckAppend(page: IPageStructure, componentType: string, props: Record<string, unknown>): void {
+export function registerWidgetsFromPuckAppend(
+  page: IPageStructure,
+  componentType: string,
+  props: Record<string, unknown>
+): void {
   const cfg = props.config;
   if (!isPlainObject(cfg) || cfg.type !== "Widget") {
     return;
