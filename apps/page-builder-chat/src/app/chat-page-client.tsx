@@ -177,10 +177,7 @@ type LinkPanelUiState = {
   sessionWidgetsKey: string | null;
 };
 
-function mergeProductCarouselPicker(
-  prev: ProductCarouselUiState | null,
-  incoming: ProductCarouselPickerPayload
-): ProductCarouselUiState {
+function mergeProductCarouselPicker(prev: ProductCarouselUiState | null, incoming: ProductCarouselPickerPayload): ProductCarouselUiState {
   const updateId = incoming.updateComponentId ?? prev?.updateComponentId;
   if (prev && prev.widgetsKey === incoming.widgetsKey && incoming.pageIndex > 1) {
     const seen = new Set(prev.products.map((x) => x.sku));
@@ -235,10 +232,7 @@ function formatChatAssistantReply(
   applied: number | undefined,
   errors: { commandIndex: number; message: string }[] | undefined
 ): string {
-  const extra =
-    errors && errors.length > 0
-      ? `\n\nCommand issues:\n${errors.map((e) => `- #${e.commandIndex}: ${e.message}`).join("\n")}`
-      : "";
+  const extra = errors && errors.length > 0 ? `\n\nCommand issues:\n${errors.map((e) => `- #${e.commandIndex}: ${e.message}`).join("\n")}` : "";
   const main = (assistantContent ?? "").trim();
   const appliedCount = applied ?? 0;
   const changesLine = appliedCount > 0 ? "\n\nChanges applied" : "";
@@ -314,23 +308,15 @@ function buildWelcome(plainTextEnabled: boolean, openAiReady: boolean, ollamaCon
   if (openAiReady) {
     engines.push("**OpenAI**");
   }
-  const engineLine =
-    engines.length > 0 ? `Engines: ${engines.join(", ")}.` : "No chat engines enabled — use **Apply commands** only.";
+  const engineLine = engines.length > 0 ? `Engines: ${engines.join(", ")}.` : "No chat engines enabled — use **Apply commands** only.";
   return `Hi. ${engineLine} Try: \`set title My store\` then Send, or type \`help\`. **Apply commands** below still works without any key. See /commands-reference.txt.`;
 }
 
-export function ChatPageClient({
-  chatPanelEnabled,
-  plainTextEnabled,
-  openAiReady,
-  ollamaConfigured,
-}: ChatPageClientProps) {
+export function ChatPageClient({ chatPanelEnabled, plainTextEnabled, openAiReady, ollamaConfigured }: ChatPageClientProps) {
   const [page, setPage] = useState(INITIAL_PAGE);
   const [publishLoading, setPublishLoading] = useState(false);
   const [publishStatus, setPublishStatus] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    { role: "assistant", content: buildWelcome(plainTextEnabled, openAiReady, ollamaConfigured) },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [{ role: "assistant", content: buildWelcome(plainTextEnabled, openAiReady, ollamaConfigured) }]);
   const [chatInput, setChatInput] = useState("");
   const [commandsInput, setCommandsInput] = useState(DEFAULT_SAMPLE_NDJSON);
   const [loading, setLoading] = useState(false);
@@ -389,6 +375,7 @@ export function ChatPageClient({
         setPublishStatus(`Failed (${res.status}): ${text.slice(0, 600)}`);
       } else {
         setPublishStatus(`Success (${res.status}). ${text.slice(0, 400)}`);
+        setTimeout(() => setPublishStatus(null), 2000);
       }
     } catch (e) {
       setPublishStatus(e instanceof Error ? e.message : String(e));
@@ -580,9 +567,7 @@ export function ChatPageClient({
           linkWidgetSubmit: {
             url,
             displayName,
-            ...(linkPanel.sessionWidgetsKey?.trim()
-              ? { reuseWidgetsKey: linkPanel.sessionWidgetsKey.trim() }
-              : {}),
+            ...(linkPanel.sessionWidgetsKey?.trim() ? { reuseWidgetsKey: linkPanel.sessionWidgetsKey.trim() } : {}),
           },
         }),
         cache: "no-store",
@@ -800,7 +785,7 @@ export function ChatPageClient({
             borderBottom: "1px solid var(--border)",
           }}
         >
-          {publishStatus}
+          {publishStatus.startsWith("Success") ? "Published to preview successfully" : "Failed to publish to preview"}
         </div>
       )}
 
@@ -873,21 +858,11 @@ export function ChatPageClient({
           {linkPanel.afterCmsSave ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <div style={{ color: "var(--muted)", fontSize: "0.82rem" }}>
-                Link saved to CMS. <strong>Add more</strong> opens the form to save another link (same API).{" "}
-                <strong>Finalise</strong> updates the page JSON (LinkPanel <code>widgetKey</code>) using the shared
-                session key (same for every link you add here).
+                Link saved to CMS. <strong>Add more</strong> opens the form to save another link (same API). <strong>Finalise</strong> updates the page JSON (LinkPanel{" "}
+                <code>widgetKey</code>) using the shared session key (same for every link you add here).
               </div>
               <div style={styles.chipRow}>
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={() =>
-                    setLinkPanel((p) =>
-                      p ? { ...p, url: "", displayName: "", afterCmsSave: false } : p
-                    )
-                  }
-                  style={styles.chip}
-                >
+                <button type="button" disabled={loading} onClick={() => setLinkPanel((p) => (p ? { ...p, url: "", displayName: "", afterCmsSave: false } : p))} style={styles.chip}>
                   Add more
                 </button>
                 <button
@@ -910,10 +885,9 @@ export function ChatPageClient({
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, maxWidth: 420 }}>
               <div style={{ color: "var(--muted)", fontSize: "0.78rem", lineHeight: 1.4 }}>
-                <strong>Submit</strong> calls <code>CreateUpdateLinkWidgetConfiguration</code>. The first submit in
-                this panel picks a <code>WidgetsKey</code>; after <strong>Add more</strong>, only{" "}
-                <strong>Title</strong> and <strong>Url</strong> change — other gateway fields stay the same. Use{" "}
-                <strong>Finalise</strong> when you want the page JSON updated.
+                <strong>Submit</strong> calls <code>CreateUpdateLinkWidgetConfiguration</code>. The first submit in this panel picks a <code>WidgetsKey</code>; after{" "}
+                <strong>Add more</strong>, only <strong>Title</strong> and <strong>Url</strong> change — other gateway fields stay the same. Use <strong>Finalise</strong> when you
+                want the page JSON updated.
               </div>
               <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <span style={{ fontWeight: 500, fontSize: "0.82rem" }}>URL</span>
@@ -1031,29 +1005,122 @@ export function ChatPageClient({
               Load default sample
             </button>
           </div>
-          <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: 6 }}>
-            Insert widget (appends one command — then Apply)
-          </div>
+          <div style={{ fontSize: "0.75rem", color: "var(--muted)", marginBottom: 6 }}>Insert widget (appends one command — then Apply)</div>
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginBottom: 8 }}>
-            <button type="button" disabled={loading} onClick={() => appendCmd({ kind: "merge_root_props", target: "main", props: { title: "Page title" } })} style={styles.chip}>+ Root title</button>
-            <button type="button" disabled={loading} onClick={() => appendCmd({ kind: "append_component", target: "main", componentType: "Text", props: { align: "left", text: "New text block", padding: { top: "0", right: "0", bottom: "0", left: "0" }, size: "m", color: "default", weight: "normal" }, id: newWidgetId("Text") })} style={styles.chip}>+ Text</button>
-            <button type="button" disabled={loading} onClick={() => appendCmd({ kind: "append_component", target: "main", componentType: "Heading", props: { align: "left", text: "New heading", margin: { top: "0", right: "0", bottom: "0", left: "0" }, padding: { top: "0", right: "0", bottom: "0", left: "0" }, border: { width: "0", color: "black", style: "solid", borderRadius: 0 }, size: "l", background: "transparent", textColor: "black", level: "2" }, id: newWidgetId("Heading") })} style={styles.chip}>+ Heading</button>
-            <button type="button" disabled={loading} onClick={() => appendCmd({ kind: "append_component", target: "main", componentType: "Container", props: { align: "center", layout: "standard", flexProperties: { flexDirection: "column", rowAlignment: { justifyContent: "flex-start", alignItems: "flex-start" }, columnAlignment: { alignItems: "flex-start", justifyContent: "flex-start" }, flexWrap: "nowrap", gap: 16 }, rigidView: "no", maxWidth: 1200, margin: { top: "0", right: "0", bottom: "0", left: "0" }, padding: { top: "16", right: "16", bottom: "16", left: "16" }, border: { width: "0", color: "black", borderClass: "solid", borderRadius: 0 }, height: "auto", image: { src: "", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" } }, id: newWidgetId("Container") })} style={styles.chip}>+ Container</button>
-            <button type="button" disabled={loading} onClick={() => appendCmd({ kind: "append_component", target: "main", componentType: "VerticalSpacing", props: { size: "24px" }, id: newWidgetId("VerticalSpacing") })} style={styles.chip}>+ Vertical space</button>
-            <button type="button" disabled={loading} onClick={() => appendCmd({ kind: "append_component", target: "main", componentType: "ButtonGroup", props: { align: "left", buttons: [{ label: "Button", href: "#", variant: "primary", target: "_self" }] }, id: newWidgetId("ButtonGroup") })} style={styles.chip}>+ Button group</button>
+            <button type="button" disabled={loading} onClick={() => appendCmd({ kind: "merge_root_props", target: "main", props: { title: "Page title" } })} style={styles.chip}>
+              + Root title
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() =>
+                appendCmd({
+                  kind: "append_component",
+                  target: "main",
+                  componentType: "Text",
+                  props: { align: "left", text: "New text block", padding: { top: "0", right: "0", bottom: "0", left: "0" }, size: "m", color: "default", weight: "normal" },
+                  id: newWidgetId("Text"),
+                })
+              }
+              style={styles.chip}
+            >
+              + Text
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() =>
+                appendCmd({
+                  kind: "append_component",
+                  target: "main",
+                  componentType: "Heading",
+                  props: {
+                    align: "left",
+                    text: "New heading",
+                    margin: { top: "0", right: "0", bottom: "0", left: "0" },
+                    padding: { top: "0", right: "0", bottom: "0", left: "0" },
+                    border: { width: "0", color: "black", style: "solid", borderRadius: 0 },
+                    size: "l",
+                    background: "transparent",
+                    textColor: "black",
+                    level: "2",
+                  },
+                  id: newWidgetId("Heading"),
+                })
+              }
+              style={styles.chip}
+            >
+              + Heading
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() =>
+                appendCmd({
+                  kind: "append_component",
+                  target: "main",
+                  componentType: "Container",
+                  props: {
+                    align: "center",
+                    layout: "standard",
+                    flexProperties: {
+                      flexDirection: "column",
+                      rowAlignment: { justifyContent: "flex-start", alignItems: "flex-start" },
+                      columnAlignment: { alignItems: "flex-start", justifyContent: "flex-start" },
+                      flexWrap: "nowrap",
+                      gap: 16,
+                    },
+                    rigidView: "no",
+                    maxWidth: 1200,
+                    margin: { top: "0", right: "0", bottom: "0", left: "0" },
+                    padding: { top: "16", right: "16", bottom: "16", left: "16" },
+                    border: { width: "0", color: "black", borderClass: "solid", borderRadius: 0 },
+                    height: "auto",
+                    image: { src: "", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" },
+                  },
+                  id: newWidgetId("Container"),
+                })
+              }
+              style={styles.chip}
+            >
+              + Container
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => appendCmd({ kind: "append_component", target: "main", componentType: "VerticalSpacing", props: { size: "24px" }, id: newWidgetId("VerticalSpacing") })}
+              style={styles.chip}
+            >
+              + Vertical space
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() =>
+                appendCmd({
+                  kind: "append_component",
+                  target: "main",
+                  componentType: "ButtonGroup",
+                  props: { align: "left", buttons: [{ label: "Button", href: "#", variant: "primary", target: "_self" }] },
+                  id: newWidgetId("ButtonGroup"),
+                })
+              }
+              style={styles.chip}
+            >
+              + Button group
+            </button>
           </div>
-          <textarea
-            value={commandsInput}
-            onChange={(e) => setCommandsInput(e.target.value)}
-            rows={8}
-            spellCheck={false}
-            style={styles.commandsTextarea}
-            disabled={loading}
-          />
+          <textarea value={commandsInput} onChange={(e) => setCommandsInput(e.target.value)} rows={8} spellCheck={false} style={styles.commandsTextarea} disabled={loading} />
           <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 8, marginTop: 8 }}>
-            <button type="button" onClick={() => setCommandsInput(SAMPLE_NDJSON)} style={styles.chip}>Load sample: category PLP</button>
-            <button type="button" onClick={() => setCommandsInput(SAMPLE_JSON_ARRAY)} style={styles.chip}>Load sample: product PDP</button>
-            <button type="button" onClick={() => setCommandsInput(SAMPLE_APPEND_EMPTY)} style={styles.chip}>Load sample: EmptyBox only</button>
+            <button type="button" onClick={() => setCommandsInput(SAMPLE_NDJSON)} style={styles.chip}>
+              Load sample: category PLP
+            </button>
+            <button type="button" onClick={() => setCommandsInput(SAMPLE_JSON_ARRAY)} style={styles.chip}>
+              Load sample: product PDP
+            </button>
+            <button type="button" onClick={() => setCommandsInput(SAMPLE_APPEND_EMPTY)} style={styles.chip}>
+              Load sample: EmptyBox only
+            </button>
             <button
               type="button"
               onClick={() => void applyCommands()}
