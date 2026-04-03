@@ -187,7 +187,7 @@ export interface ChatPageClientProps {
 
 /* ── SVG Logo component ─────────────────────────────── */
 
-function ZnodeLogo({ size = 36 }: { size?: number }) {
+function ZnodeLogo({ size = 44 }: { size?: number }) {
   const aspectRatio = 1536 / 1024; 
   return (
     <svg width={size * aspectRatio} height={size} viewBox="0 0 1536 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
