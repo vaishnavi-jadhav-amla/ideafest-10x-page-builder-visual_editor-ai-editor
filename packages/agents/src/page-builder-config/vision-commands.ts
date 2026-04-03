@@ -378,7 +378,10 @@ function assignRealUuids(result: VisionAnalysisResult): VisionAnalysisResult {
 /* -------------------------------------------------------------------------- */
 
 interface OpenAiVisionResponse {
-  choices?: Array<{ message?: { content?: string | null } }>;
+  choices?: Array<{
+    message?: { content?: string | null; refusal?: string | null };
+    finish_reason?: string;
+  }>;
 }
 
 /**
@@ -418,7 +421,7 @@ export async function runOpenAiVisionCommands({
         ],
       },
     ],
-    max_completion_tokens: 4096,
+    max_completion_tokens: 16384,
   };
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -436,9 +439,26 @@ export async function runOpenAiVisionCommands({
   }
 
   const data = (await res.json()) as OpenAiVisionResponse;
-  const content = data.choices?.[0]?.message?.content;
+  const choice = data.choices?.[0];
+  const content = choice?.message?.content;
+  const finishReason = choice?.finish_reason;
+  const refusal = choice?.message?.refusal;
+
+  console.log("[vision] OpenAI finish_reason:", finishReason, "content length:", content?.length ?? 0, "refusal:", refusal ?? "none");
+
   if (!content) {
-    throw new Error("OpenAI vision returned no message content");
+    if (refusal) {
+      throw new Error(`OpenAI vision refused the request: ${refusal}`);
+    }
+    if (finishReason === "content_filter") {
+      throw new Error("OpenAI vision response was blocked by content filtering. Try a different image.");
+    }
+    if (finishReason === "length") {
+      throw new Error("OpenAI vision response was truncated (max tokens reached). The image may be too complex.");
+    }
+    throw new Error(
+      `OpenAI vision returned no message content (finish_reason: ${finishReason ?? "unknown"}, choices: ${data.choices?.length ?? 0})`
+    );
   }
 
   return parseVisionJson(content);
