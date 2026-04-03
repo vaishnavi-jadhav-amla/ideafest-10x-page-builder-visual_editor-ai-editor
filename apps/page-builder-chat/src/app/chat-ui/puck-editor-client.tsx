@@ -260,7 +260,7 @@ export default function PuckEditorClient({ chatPanelEnabled, plainTextEnabled, o
 
   return (
     <div style={{ background: "white", color: "black", minHeight: "100vh", position: "relative" }}>
-      <Puck
+      {/* <Puck
         key={puckKey}
         config={config}
         data={pageStateToPuckData(pageState)}
@@ -268,7 +268,7 @@ export default function PuckEditorClient({ chatPanelEnabled, plainTextEnabled, o
         onPublish={(publishedData) => {
           console.log("Published:", publishedData);
         }}
-      />
+      /> */}
       {/* <AiChatButton page={pageState} onPageChange={handleAiPageChange} /> */}
       <ChatPageClientButton chatPanelEnabled={chatPanelEnabled} plainTextEnabled={plainTextEnabled} openAiReady={openAiReady} ollamaConfigured={ollamaConfigured} />
     </div>

@@ -36,8 +36,10 @@ import {
   fetchBannerSliderChoicesFromGateway,
   isAddAdSpaceChatIntent,
   isAddBannerSliderChatIntent,
+  isAddLinkPanelChatIntent,
   isUpdateBannerSliderChatIntent,
   isAddHomePagePromoChatIntent,
+  createUpdateLinkWidgetConfigurationToGateway,
   saveCmsContainerDetailsToGateway,
   saveCmsWidgetSliderBannerToGateway,
 } from "../../../lib/fetch-slider-list";
@@ -55,9 +57,19 @@ import {
   widgetKeyFromProductsCarouselProps,
   type ProductCarouselPickerPayload,
 } from "../../../lib/product-carousel-gateway";
+import { applyLinkPanelWidgetsKeyToPage } from "../../../lib/apply-link-panel-to-page";
 import {
   findLastBannerSliderComponentIdOnPage,
   findPuckComponentById,
+  mergeColorPropsForPuckType,
+  mergeSizePropsForPuckType,
+  parseComponentAlignRequest,
+  parseComponentBackgroundChangeRequest,
+  parseComponentColorChangeRequest,
+  parseComponentLevelChangeRequest,
+  parseComponentSizeChangeRequest,
+  parseComponentTextChangeRequest,
+  parseComponentWeightChangeRequest,
   parseUpdateWidgetByInstanceId,
 } from "../../../lib/puck-update-by-instance-id";
 
@@ -84,6 +96,10 @@ type ChatBody = {
   productCarouselLoadMore?: { widgetsKey: string; pageIndex: number };
   /** After multi-select: associate SKUs then append ProductsCarousel. */
   productCarouselConfirm?: { widgetsKey: string; skus: string[]; updateComponentId?: string };
+  /** Link panel form: save URL + display name via CreateUpdateLinkWidgetConfiguration. */
+  linkWidgetSubmit?: { url: string; displayName: string; reuseWidgetsKey?: string };
+  /** After CMS save: apply `WidgetsKey` to page JSON (merge LinkPanel or append). */
+  applyLinkPanelPageUpdate?: { widgetsKey: string };
 };
 
 function jsonResult(
@@ -98,6 +114,10 @@ function jsonResult(
     /** Client sends this back with the next slider pick to run merge instead of append. */
     bannerSliderUpdateComponentId?: string;
     productCarouselPicker?: ProductCarouselPickerPayload;
+    /** Client shows URL / display name form (chat: add link panel / add links / add link). */
+    showLinkPanelForm?: boolean;
+    /** Panel `WidgetsKey` for this session (first save; reused for more links) — **Finalise** updates page JSON. */
+    linkPanelSessionWidgetsKey?: string;
   },
   status = 200
 ) {
@@ -619,6 +639,97 @@ export async function POST(req: Request) {
       });
     }
 
+    if (body.applyLinkPanelPageUpdate && typeof body.applyLinkPanelPageUpdate === "object") {
+      const wk =
+        typeof body.applyLinkPanelPageUpdate.widgetsKey === "string"
+          ? body.applyLinkPanelPageUpdate.widgetsKey.trim()
+          : "";
+      if (!wk) {
+        return NextResponse.json({ error: "applyLinkPanelPageUpdate.widgetsKey is required." }, { status: 400 });
+      }
+      const applied = applyLinkPanelWidgetsKeyToPage(body.page, wk);
+      if (applied.error) {
+        return jsonResult({
+          assistantContent: `Could not update page JSON: ${applied.error}`,
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "link-panel-page-update-error",
+          showLinkPanelForm: true,
+        });
+      }
+      const lines =
+        applied.commands.length > 0
+          ? `\n\n\`widgetKey\` set to \`${wk}\` (merge existing **LinkPanel** or append on main).`
+          : "";
+      return jsonResult({
+        assistantContent: `Updated page JSON with **LinkPanel** \`WidgetsKey\`.${lines}`,
+        page: applied.page,
+        applied: applied.commands.length,
+        errors: [],
+        toolArgumentsParsed: [{ commands: applied.commands }],
+        source: "link-panel-page-update-ok",
+        showLinkPanelForm: true,
+      });
+    }
+
+    if (body.linkWidgetSubmit && typeof body.linkWidgetSubmit === "object") {
+      const url = typeof body.linkWidgetSubmit.url === "string" ? body.linkWidgetSubmit.url.trim() : "";
+      const displayName =
+        typeof body.linkWidgetSubmit.displayName === "string" ? body.linkWidgetSubmit.displayName.trim() : "";
+      if (!url || !displayName) {
+        return NextResponse.json(
+          { error: "Link widget: URL and display name are required." },
+          { status: 400 }
+        );
+      }
+      const reuseRw =
+        typeof body.linkWidgetSubmit.reuseWidgetsKey === "string"
+          ? body.linkWidgetSubmit.reuseWidgetsKey.trim()
+          : "";
+      const saveRes = await createUpdateLinkWidgetConfigurationToGateway({
+        url,
+        displayName,
+        ...(reuseRw ? { reuseWidgetsKey: reuseRw } : {}),
+      });
+      if (!saveRes.ok) {
+        const authHint =
+          saveRes.status === 401
+            ? " Set **PAGE_BUILDER_SLIDER_AUTHORIZATION** or **PAGE_BUILDER_PUBLISH_PREVIEW_AUTHORIZATION**."
+            : "";
+        return jsonResult({
+          assistantContent:
+            `**CreateUpdateLinkWidgetConfiguration** failed (${saveRes.status}): ${saveRes.body.slice(0, 400)}${authHint}`,
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "link-widget-save-error",
+          showLinkPanelForm: true,
+        });
+      }
+      const skipNote =
+        process.env.PAGE_BUILDER_SKIP_CREATE_UPDATE_LINK_WIDGET === "true" ||
+        process.env.PAGE_BUILDER_SKIP_CREATE_UPDATE_LINK_WIDGET === "1"
+          ? "\n\n(Gateway call skipped: **PAGE_BUILDER_SKIP_CREATE_UPDATE_LINK_WIDGET**.)"
+          : "";
+      const reuseHint = reuseRw
+        ? " Other gateway fields match your first submit in this session (same `WidgetsKey`)."
+        : "";
+      return jsonResult({
+        assistantContent:
+          `Saved link configuration: **${displayName}** → \`${url}\`.${reuseHint} Add another with **Add more**, or **Finalise** to update the page JSON (LinkPanel \`widgetKey\`).${skipNote}`,
+        page: body.page,
+        applied: 0,
+        errors: [],
+        toolArgumentsParsed: [],
+        source: "link-widget-save-ok",
+        showLinkPanelForm: true,
+        linkPanelSessionWidgetsKey: saveRes.widgetsKey,
+      });
+    }
+
     /* ── Image-to-page (vision AI) ── */
     if (body.imageBase64?.trim() && body.imageMimeType?.trim()) {
       console.log("[vision] Analyze image clicked — mimeType:", body.imageMimeType, "base64 length:", body.imageBase64.length, "user message:", body.message ?? "(none)");
@@ -788,6 +899,295 @@ export async function POST(req: Request) {
         applied: result.applied,
         toolArgumentsParsed: [{ commands: plainCommands }],
         source: "plain-text",
+      });
+    }
+
+    const colorChange = parseComponentColorChangeRequest(message);
+    if (colorChange) {
+      const found = findPuckComponentById(body.page, colorChange.componentId);
+      if (!found) {
+        return jsonResult({
+          assistantContent:
+            `No component with id \`${colorChange.componentId}\` on this page (searched main, header, footer).`,
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "color-update-not-found",
+        });
+      }
+      const cmd: PageBuilderCommand = {
+        kind: "merge_component_props",
+        target: found.target,
+        componentId: colorChange.componentId,
+        props: mergeColorPropsForPuckType(found.type, colorChange.color),
+      };
+      const result = applyPageBuilderCommands(body.page, [cmd]);
+      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
+      const assistantContent =
+        result.errors.length === 0
+          ? ""
+          : `Color update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
+      return jsonResult({
+        assistantContent,
+        page: result.page,
+        errors: result.errors,
+        applied: result.applied,
+        toolArgumentsParsed: [{ commands: [cmd] }],
+        source: "component-color-update",
+      });
+    }
+
+    const backgroundChange = parseComponentBackgroundChangeRequest(message);
+    if (backgroundChange) {
+      const found = findPuckComponentById(body.page, backgroundChange.componentId);
+      if (!found) {
+        return jsonResult({
+          assistantContent:
+            `No component with id \`${backgroundChange.componentId}\` on this page (searched main, header, footer).`,
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "background-update-not-found",
+        });
+      }
+      const cmd: PageBuilderCommand = {
+        kind: "merge_component_props",
+        target: found.target,
+        componentId: backgroundChange.componentId,
+        props: { background: backgroundChange.background },
+      };
+      const result = applyPageBuilderCommands(body.page, [cmd]);
+      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
+      const assistantContent =
+        result.errors.length === 0
+          ? ""
+          : `Background update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
+      return jsonResult({
+        assistantContent,
+        page: result.page,
+        errors: result.errors,
+        applied: result.applied,
+        toolArgumentsParsed: [{ commands: [cmd] }],
+        source: "component-background-update",
+      });
+    }
+
+    const alignChange = parseComponentAlignRequest(message);
+    if (alignChange) {
+      const found = findPuckComponentById(body.page, alignChange.componentId);
+      if (!found) {
+        return jsonResult({
+          assistantContent:
+            `No component with id \`${alignChange.componentId}\` on this page (searched main, header, footer).`,
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "align-update-not-found",
+        });
+      }
+      const cmd: PageBuilderCommand = {
+        kind: "merge_component_props",
+        target: found.target,
+        componentId: alignChange.componentId,
+        props: { align: alignChange.align },
+      };
+      const result = applyPageBuilderCommands(body.page, [cmd]);
+      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
+      const assistantContent =
+        result.errors.length === 0
+          ? ""
+          : `Align update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
+      return jsonResult({
+        assistantContent,
+        page: result.page,
+        errors: result.errors,
+        applied: result.applied,
+        toolArgumentsParsed: [{ commands: [cmd] }],
+        source: "component-align-update",
+      });
+    }
+
+    const levelChange = parseComponentLevelChangeRequest(message);
+    if (levelChange) {
+      const found = findPuckComponentById(body.page, levelChange.componentId);
+      if (!found) {
+        return jsonResult({
+          assistantContent:
+            `No component with id \`${levelChange.componentId}\` on this page (searched main, header, footer).`,
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "level-update-not-found",
+        });
+      }
+      if (found.type !== "Heading") {
+        return jsonResult({
+          assistantContent: `**Level** applies to **Heading** blocks only; \`${levelChange.componentId}\` is a **${found.type}**.`,
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "level-update-wrong-type",
+        });
+      }
+      const cmd: PageBuilderCommand = {
+        kind: "merge_component_props",
+        target: found.target,
+        componentId: levelChange.componentId,
+        props: { level: levelChange.level },
+      };
+      const result = applyPageBuilderCommands(body.page, [cmd]);
+      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
+      const assistantContent =
+        result.errors.length === 0
+          ? ""
+          : `Level update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
+      return jsonResult({
+        assistantContent,
+        page: result.page,
+        errors: result.errors,
+        applied: result.applied,
+        toolArgumentsParsed: [{ commands: [cmd] }],
+        source: "component-level-update",
+      });
+    }
+
+    const sizeChange = parseComponentSizeChangeRequest(message);
+    if (sizeChange) {
+      const found = findPuckComponentById(body.page, sizeChange.componentId);
+      if (!found) {
+        return jsonResult({
+          assistantContent:
+            `No component with id \`${sizeChange.componentId}\` on this page (searched main, header, footer).`,
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "size-update-not-found",
+        });
+      }
+      const props = mergeSizePropsForPuckType(found.type, sizeChange.size);
+      if (!props) {
+        const hint =
+          found.type === "Text"
+            ? "Text supports **size** `s` or `m` only."
+            : found.type === "Heading"
+              ? "Heading supports **size** `xxxl`, `xxl`, `xl`, `l`, `m`, `s`, `xs`, or `default`."
+              : "Unsupported **size** for this block type.";
+        return jsonResult({
+          assistantContent: hint,
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "size-update-invalid",
+        });
+      }
+      const cmd: PageBuilderCommand = {
+        kind: "merge_component_props",
+        target: found.target,
+        componentId: sizeChange.componentId,
+        props,
+      };
+      const result = applyPageBuilderCommands(body.page, [cmd]);
+      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
+      const assistantContent =
+        result.errors.length === 0
+          ? ""
+          : `Size update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
+      return jsonResult({
+        assistantContent,
+        page: result.page,
+        errors: result.errors,
+        applied: result.applied,
+        toolArgumentsParsed: [{ commands: [cmd] }],
+        source: "component-size-update",
+      });
+    }
+
+    const textChange = parseComponentTextChangeRequest(message);
+    if (textChange) {
+      const found = findPuckComponentById(body.page, textChange.componentId);
+      if (!found) {
+        return jsonResult({
+          assistantContent:
+            `No component with id \`${textChange.componentId}\` on this page (searched main, header, footer).`,
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "text-update-not-found",
+        });
+      }
+      const cmd: PageBuilderCommand = {
+        kind: "merge_component_props",
+        target: found.target,
+        componentId: textChange.componentId,
+        props: { text: textChange.text },
+      };
+      const result = applyPageBuilderCommands(body.page, [cmd]);
+      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
+      const assistantContent =
+        result.errors.length === 0
+          ? ""
+          : `Text update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
+      return jsonResult({
+        assistantContent,
+        page: result.page,
+        errors: result.errors,
+        applied: result.applied,
+        toolArgumentsParsed: [{ commands: [cmd] }],
+        source: "component-text-update",
+      });
+    }
+
+    const weightChange = parseComponentWeightChangeRequest(message);
+    if (weightChange) {
+      const found = findPuckComponentById(body.page, weightChange.componentId);
+      if (!found) {
+        return jsonResult({
+          assistantContent:
+            `No component with id \`${weightChange.componentId}\` on this page (searched main, header, footer).`,
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "weight-update-not-found",
+        });
+      }
+      if (found.type !== "Text") {
+        return jsonResult({
+          assistantContent: `**Weight** applies to **Text** blocks only; \`${weightChange.componentId}\` is a **${found.type}**.`,
+          page: body.page,
+          applied: 0,
+          errors: [],
+          toolArgumentsParsed: [],
+          source: "weight-update-wrong-type",
+        });
+      }
+      const cmd: PageBuilderCommand = {
+        kind: "merge_component_props",
+        target: found.target,
+        componentId: weightChange.componentId,
+        props: { weight: weightChange.weight },
+      };
+      const result = applyPageBuilderCommands(body.page, [cmd]);
+      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
+      const assistantContent =
+        result.errors.length === 0
+          ? ""
+          : `Weight update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
+      return jsonResult({
+        assistantContent,
+        page: result.page,
+        errors: result.errors,
+        applied: result.applied,
+        toolArgumentsParsed: [{ commands: [cmd] }],
+        source: "component-weight-update",
       });
     }
 
@@ -997,6 +1397,19 @@ export async function POST(req: Request) {
         applied: result.applied,
         toolArgumentsParsed: [{ commands: [cmd] }],
         source: "ad-space-add",
+      });
+    }
+
+    if (isAddLinkPanelChatIntent(message)) {
+      return jsonResult({
+        assistantContent:
+          "Enter **URL** and **display name**, then **Submit** (CreateUpdateLinkWidgetConfiguration). **Add more** + **Submit** again reuses the same `WidgetsKey` and payload shape — only Title/Url change. **Finalise** writes the session `WidgetsKey` into the page JSON (`LinkPanel`).",
+        page: body.page,
+        applied: 0,
+        errors: [],
+        toolArgumentsParsed: [],
+        source: "link-panel-form",
+        showLinkPanelForm: true,
       });
     }
 

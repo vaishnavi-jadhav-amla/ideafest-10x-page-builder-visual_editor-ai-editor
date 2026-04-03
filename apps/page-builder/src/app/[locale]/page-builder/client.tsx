@@ -8,6 +8,7 @@ import { SessionProvider } from "next-auth/react";
 import { OverlayLoader } from "@znode/base-components/common/loader-component";
 import { IPageStructure } from "@znode/types/visual-editor";
 import { PAGE_CONSTANTS } from "@znode/page-builder/constants";
+import { AiChatIframe } from "./ai-chat-iframe";
 
 interface IClientProps {
   pageStructure: IPageStructure;
@@ -83,7 +84,7 @@ function Client(props: Readonly<IClientProps>) {
     configType = PAGE_CONSTANTS.URLS.HEADER;
   } else if (props.url.startsWith(PAGE_CONSTANTS.URLS.FOOTER) || props.pageCode?.startsWith(PAGE_CONSTANTS.PAGE_CODES.FOOTER)) {
     configType = PAGE_CONSTANTS.URLS.FOOTER;
-  } else if (props.pageCode?.startsWith(PAGE_CONSTANTS.PAGE_CODES.CART)) { 
+  } else if (props.pageCode?.startsWith(PAGE_CONSTANTS.PAGE_CODES.CART)) {
     configType = PAGE_CONSTANTS.URLS.CART;
   } else if (props.pageCode?.startsWith(PAGE_CONSTANTS.PAGE_CODES.CHECKOUT)) {
     configType = PAGE_CONSTANTS.URLS.CHECKOUT;
@@ -101,6 +102,7 @@ function Client(props: Readonly<IClientProps>) {
         mode={props?.mode}
       />
 
+      <AiChatIframe />
       {isLoading && <OverlayLoader color="#fff" />}
     </SessionProvider>
   );

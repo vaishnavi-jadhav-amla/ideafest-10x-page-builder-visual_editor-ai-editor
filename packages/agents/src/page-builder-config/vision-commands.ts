@@ -418,7 +418,7 @@ export async function runOpenAiVisionCommands({
         ],
       },
     ],
-    max_tokens: 4096,
+    max_completion_tokens: 4096,
   };
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
