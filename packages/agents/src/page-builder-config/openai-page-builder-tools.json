@@ -1,0 +1,156 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "apply_page_builder_commands",
+      "description": "Apply a list of declarative edits to a Znode Puck page structure (IPageStructure). Operates on a copy: merge root props, clear or append/remove/update components in main canvas, header, or footer, set page key, or replace zone slots. Output JSON must use the exact property names below (camelCase) so it matches parsePageBuilderCommands / applyPageBuilderCommands in @znode/agents/page-builder-config. Component identity is props.id. append_component generates an id when id is omitted.",
+      "parameters": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["commands"],
+        "properties": {
+          "commands": {
+            "type": "array",
+            "description": "Ordered list of commands; each object must include kind and the fields required for that kind.",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["kind", "key"],
+                  "properties": {
+                    "kind": { "type": "string", "enum": ["set_page_key"] },
+                    "key": {
+                      "type": "string",
+                      "description": "Page structure key, often URL-like (e.g. category/{} or content/123)."
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["kind", "target", "props"],
+                  "properties": {
+                    "kind": { "type": "string", "enum": ["merge_root_props"] },
+                    "target": {
+                      "type": "string",
+                      "enum": ["main", "header", "footer"],
+                      "description": "Which Puck data slice to update: main body (data), headerData, or footerData."
+                    },
+                    "props": {
+                      "type": "object",
+                      "description": "Shallow-merged into that target's root object.",
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["kind", "target"],
+                  "properties": {
+                    "kind": { "type": "string", "enum": ["clear_content"] },
+                    "target": {
+                      "type": "string",
+                      "enum": ["main", "header", "footer"]
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["kind", "target", "componentType"],
+                  "properties": {
+                    "kind": { "type": "string", "enum": ["append_component"] },
+                    "target": {
+                      "type": "string",
+                      "enum": ["main", "header", "footer"]
+                    },
+                    "componentType": {
+                      "type": "string",
+                      "description": "Puck component type name (e.g. ProductListPage, Flex, EmptyBox)."
+                    },
+                    "props": {
+                      "type": "object",
+                      "description": "Component props; id is added automatically if not provided.",
+                      "additionalProperties": true
+                    },
+                    "id": {
+                      "type": "string",
+                      "description": "Optional explicit props.id for the new component."
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["kind", "target", "componentId"],
+                  "properties": {
+                    "kind": { "type": "string", "enum": ["remove_component"] },
+                    "target": {
+                      "type": "string",
+                      "enum": ["main", "header", "footer"]
+                    },
+                    "componentId": {
+                      "type": "string",
+                      "description": "props.id of the component to remove (searched in content and nested component arrays on props)."
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["kind", "target", "componentId", "props"],
+                  "properties": {
+                    "kind": { "type": "string", "enum": ["merge_component_props"] },
+                    "target": {
+                      "type": "string",
+                      "enum": ["main", "header", "footer"]
+                    },
+                    "componentId": { "type": "string" },
+                    "props": {
+                      "type": "object",
+                      "description": "Shallow-merged into the matching component's props.",
+                      "additionalProperties": true
+                    }
+                  }
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["kind", "target", "zones"],
+                  "properties": {
+                    "kind": { "type": "string", "enum": ["replace_zones"] },
+                    "target": {
+                      "type": "string",
+                      "enum": ["main", "header", "footer"]
+                    },
+                    "zones": {
+                      "type": "object",
+                      "description": "Full replacement map for Puck zones on the target data (zone name -> array of components).",
+                      "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "required": ["type", "props"],
+                          "properties": {
+                            "type": { "type": "string" },
+                            "props": {
+                              "type": "object",
+                              "additionalProperties": true
+                            }
+                          },
+                          "additionalProperties": true
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+]

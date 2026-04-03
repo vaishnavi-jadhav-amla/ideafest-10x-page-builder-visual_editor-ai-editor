@@ -1,0 +1,46 @@
+.filter-account-popover {
+  position: absolute;
+  z-index: 10;
+  min-width: 200px;
+  background-color: white;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-top: 16px;
+  left: -9px;
+
+  .account-arrow-container {
+    position: absolute;
+    top: -6px;
+    left: 8px;
+    transform: translateX(-50%) rotate(180deg);
+  }
+
+  .account-arrow-border {
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 8px 6px 0;
+    border-color: #cccccc transparent transparent transparent;
+  }
+
+  .account-arrow-center {
+    position: relative;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 6px 6px 0;
+    border-color: #fff transparent transparent transparent;
+    /* White center color */
+  }
+
+  .content {
+    padding: 10px;
+  }
+
+  @media(max-width: 768px) {
+    .content {
+      padding: 0;
+    }
+  }
+}

@@ -1,0 +1,244 @@
+Page builder chat — command reference
+=====================================
+
+PLAIN TEXT CHAT (no API key)
+----------------------------
+In the **Chat** box you can send lines like (see packages/agents/.../plain-text-commands.ts):
+
+  set title My store
+  add heading Welcome
+  add text Shop the collection.
+  add container
+  add column
+  add vertical space 32px
+  add button group
+  add empty box
+  set page key category/{}
+  clear
+  remove some-component-id
+
+Prefix with main: / header: / footer: to target that area, e.g.  header: add text Hello
+
+Type **help** in chat for the full list.
+
+CMS widgets (chat — gateway-backed)
+-----------------------------------
+  add banner slider          → SliderList, then pick a row (SaveCMSWidgetSliderBanner + new block)
+  add product carousel       → new widgetsKey, unassociated products, AssociateProduct + new block
+  update product carousel    → reuse last ProductsCarousel widgetKey on the page (or env default)
+  update ProductsCarousel-<uuid>   → product list + AssociateProduct only (no duplicate block; must match props.id)
+  update BannerSlider-<uuid>       → SliderList; pick row to SaveCMSWidgetSliderBanner + merge that block
+Verbs: update | change | edit | refresh (same patterns).
+
+Optional **Ollama** (local LLM): set PAGE_BUILDER_CHAT_OLLAMA_URL (or OLLAMA_HOST), optional PAGE_BUILDER_CHAT_OLLAMA_MODEL (default llama3.2) in .env.local — see "OLLAMA" section below.
+Optional **OpenAI**: OPENAI_API_KEY
+
+HOW TO USE (JSON box)
+---------------------
+1. Click "Reset page" if you want a clean canvas.
+2. Use **Load default sample** or the **+ Text / + Heading / + Container / …** buttons (they append commands), or paste samples below.
+3. Click "Apply commands".
+4. Watch the right panel — JSON should update. No OPENAI_API_KEY needed.
+
+UI widget keys (base config / Puck)
+------------------------------------
+  Text, Heading, ButtonGroup, Container (Flex), Column, VerticalSpacing, …
+The chat app uses: Text, Heading, ButtonGroup, Container, VerticalSpacing.
+**+ Root title** sends merge_root_props (sets data.root.title), not a widget.
+
+Paste format: a JSON ARRAY [...], OR several command objects in { ... } form.
+You can put one object per line (NDJSON) or multiple { ... } blocks with newlines between them.
+The parser accepts multi-line objects. Lines starting with # are ignored.
+If you ever saw "Unexpected non-whitespace character after JSON at position …", that was from
+pasting multiple { ... } lines while the old parser treated the whole box as one JSON value — fixed in parsePageBuilderCommands.
+
+
+################################################################################
+# SAMPLE A — Smallest test (title only, no widgets)
+################################################################################
+# Paste everything between the lines into the commands box.
+
+{"kind":"merge_root_props","target":"main","props":{"title":"Hello from commands"}}
+
+
+################################################################################
+# SAMPLE B — Category-style page (NDJSON, copy all lines below)
+################################################################################
+
+{"kind":"set_page_key","key":"category/{}"}
+{"kind":"merge_root_props","target":"main","props":{"title":"Category listing"}}
+{"kind":"append_component","target":"main","componentType":"ProductListPage","props":{"config":{"id":"category"}},"id":"ProductListPage-demo-001"}
+
+
+################################################################################
+# SAMPLE C — Product-style page (single JSON array, copy from [ to ])
+################################################################################
+
+[
+  {"kind":"set_page_key","key":"product/{}"},
+  {"kind":"merge_root_props","target":"main","props":{"title":"Product details"}},
+  {"kind":"append_component","target":"main","componentType":"ProductDetailsPage","props":{"config":{"id":"product"}},"id":"ProductDetailsPage-demo-001"}
+]
+
+
+################################################################################
+# SAMPLE D — Add one EmptyBox (after reset or on top of existing content)
+################################################################################
+
+{"kind":"append_component","target":"main","componentType":"EmptyBox","props":{},"id":"EmptyBox-paste-demo-001"}
+
+
+################################################################################
+# SAMPLE E — Remove the ProductListPage from SAMPLE B (run after SAMPLE B)
+################################################################################
+
+{"kind":"remove_component","target":"main","componentId":"ProductListPage-demo-001"}
+
+
+################################################################################
+# SAMPLE F — Change root title on main (run anytime)
+################################################################################
+
+{"kind":"merge_root_props","target":"main","props":{"title":"Updated title","subtitle":"Paste sample"}}
+
+
+################################################################################
+# SAMPLE G — Stack: title + two EmptyBoxes (NDJSON)
+################################################################################
+
+{"kind":"merge_root_props","target":"main","props":{"title":"Two boxes"}}
+{"kind":"append_component","target":"main","componentType":"EmptyBox","props":{},"id":"EmptyBox-stack-a"}
+{"kind":"append_component","target":"main","componentType":"EmptyBox","props":{},"id":"EmptyBox-stack-b"}
+
+
+################################################################################
+# OLLAMA — Chat (natural language) and expected JSON shape
+################################################################################
+#
+# Setup (.env.local):
+#   PAGE_BUILDER_CHAT_OLLAMA_URL=http://127.0.0.1:11434
+#   PAGE_BUILDER_CHAT_OLLAMA_MODEL=llama3.2
+#
+# Use the **Chat** box (not the commands paste box). Ollama must reply with ONLY valid JSON
+# of the form {"commands":[ ... ]} — each item is one command object (same kinds as below).
+# kind values are snake_case: set_page_key, merge_root_props, clear_content, append_component,
+# remove_component, merge_component_props, replace_zones. Use componentType / componentId
+# (camelCase) where required.
+#
+# Znode pages: visible titles/headings belong in data.content (Heading, Text widgets). Keep
+# data.root.props empty {} in typical home.json. Do not use merge_root_props only for title;
+# use append_component Heading/Text. (If the model still returns merge_root_props with only
+# props.title on main, the server rewrites it to append Heading.)
+#
+# --- Sample chat messages to try with Ollama ---
+#
+#   Add a main heading that says "Ollama test".
+#
+#   Add a Heading "Welcome" and a line of Text "Hello".
+#
+#   Clear the main content, then add an EmptyBox widget.
+#
+#   Set page key to category/{}
+#
+# --- Same intent as JSON (what the model should output; you can also paste this in
+#     commands-only / API tests as commandsText if your client wraps it) ---
+#
+
+{"commands":[{"kind":"append_component","target":"main","componentType":"Heading","props":{"align":"left","text":"Ollama test title","size":"l","background":"transparent","textColor":"black","level":"2"}}]}
+
+{"commands":[
+  {"kind":"append_component","target":"main","componentType":"Heading","props":{"align":"left","text":"Welcome","size":"l","background":"transparent","textColor":"black","level":"2"}},
+  {"kind":"append_component","target":"main","componentType":"Text","props":{"align":"left","text":"Hello","padding":{"top":"0","right":"0","bottom":"0","left":"0"},"size":"m","color":"default","weight":"normal"}}
+]}
+
+{"commands":[
+  {"kind":"clear_content","target":"main"},
+  {"kind":"append_component","target":"main","componentType":"EmptyBox","props":{}}
+]}
+
+{"commands":[{"kind":"set_page_key","key":"category/{}"}]}
+
+#
+# Implementation: packages/agents/src/page-builder-config/ollama-commands.ts
+# Commands are coerced before apply (camelCase kinds, component_type aliases, etc.).
+#
+
+================================================================================
+Command kinds (reference)
+================================================================================
+target is always: main | header | footer
+componentType / props must exist in your theme’s Puck config.
+merge_root_props merges into Puck data.root.props (the command’s "props" field becomes root.props in saved JSON — not flat fields on data.root).
+
+
+----------------------------------------------------------------------
+set_page_key
+----------------------------------------------------------------------
+  { "kind": "set_page_key", "key": "category/{}" }
+
+
+----------------------------------------------------------------------
+merge_root_props
+----------------------------------------------------------------------
+  { "kind": "merge_root_props", "target": "main", "props": { "title": "Home" } }
+  Saved shape: "root": { "props": { "title": "Home" } }
+
+
+----------------------------------------------------------------------
+clear_content
+----------------------------------------------------------------------
+  { "kind": "clear_content", "target": "main" }
+
+
+----------------------------------------------------------------------
+append_component
+----------------------------------------------------------------------
+  {
+    "kind": "append_component",
+    "target": "main",
+    "componentType": "EmptyBox",
+    "props": {},
+    "id": "optional-fixed-id"
+  }
+
+
+----------------------------------------------------------------------
+remove_component
+----------------------------------------------------------------------
+  { "kind": "remove_component", "target": "main", "componentId": "props-id-to-remove" }
+
+
+----------------------------------------------------------------------
+merge_component_props
+----------------------------------------------------------------------
+  {
+    "kind": "merge_component_props",
+    "target": "main",
+    "componentId": "some-id",
+    "props": { "label": "Updated" }
+  }
+
+
+----------------------------------------------------------------------
+replace_zones
+----------------------------------------------------------------------
+  {
+    "kind": "replace_zones",
+    "target": "main",
+    "zones": {
+      "my-zone": [
+        { "type": "EmptyBox", "props": { "id": "z1" } }
+      ]
+    }
+  }
+
+
+================================================================================
+Environment (OpenAI) — optional
+================================================================================
+PAGE_BUILDER_CHAT_AI_ENABLED — apps/page-builder-chat/src/lib/chat-flags.ts
+OPENAI_API_KEY — only for "Chat (OpenAI)"; not needed for Apply commands.
+OPENAI_MODEL — optional (default gpt-4o in workflow).
+
+OpenAI tool JSON schema:
+packages/agents/src/page-builder-config/openai-page-builder-tools.json

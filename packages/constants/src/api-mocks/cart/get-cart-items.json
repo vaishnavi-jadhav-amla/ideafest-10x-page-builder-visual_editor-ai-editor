@@ -1,0 +1,35 @@
+{
+    "cartNumber": "C-10092025-6556",
+    "cartItems": [
+        {
+            "productLink": "DeWalt-FLEXVOLT-20-Volt-or-60-Volt-MAX-Lithium-Ion-Battery-Pack",
+            "productId": 630,
+            "productImageUrl": "/static-images/dewalt-60.jpg",
+            "addon": [],
+            "personalization": [
+                {
+                    "personalizedId": "00000000-0000-0000-0000-000000000000",
+                    "value": "test",
+                    "code": "OtherInfo"
+                }
+            ],
+            "productName": "DeWalt FLEXVOLT 20-Volt/60-Volt MAX Lithium-Ion Publish",
+            "productDescription": "\u003Cdiv data-test-selector=\"divDefaultProductDescriptionz-2710010\"\u003E\n                      \u003Cdiv data-test-selector=\"divDefaultProductTextz-2710010\"\u003E\u003C/div\u003E\n                    \u003C/div\u003E",
+            "unitPrice": 100,
+            "totalPrice": 100,
+            "quantity": 1,
+            "cartItemId": "66cf3353-0a8e-f011-b485-000d3a533840",
+            "maximumQuantity": null,
+            "minimumQuantity": null,
+            "outOfStockOption": null,
+            "uom": null,
+            "sku": "z-2710010",
+            "productType": null,
+            "showSku": true,
+            "itemPrice": 100,
+            "hasValidationErrors": false,
+            "isOutOfStock": false
+        }
+    ],
+    "isUnAssociatedProductEntity": false
+}

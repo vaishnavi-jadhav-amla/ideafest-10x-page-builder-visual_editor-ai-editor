@@ -1,0 +1,53 @@
+name: Trigger - Z10 LT
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Specifies the feature branch,if any
+        required: true
+        default: qa
+
+      environment:
+        description: 'Choose the deployment environment'
+        required: true
+        default: 'pricing'
+        type: choice
+        options:
+          - pricing
+
+      webstore:
+        description: 'z10webstore'
+        required: true
+        default: true
+        type: boolean
+
+      pagebuilder:
+        description: 'pagebuilder'
+        required: true
+        default: true
+        type: boolean
+
+  # schedule:
+  #   - cron:  '30 16 * * 1-5'
+
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: LT Trigger 
+        run: |
+      - name: LT Trigger 
+        run: |
+          curl -X POST \
+          -H "Authorization: token ${{ secrets.ACCESS_REPO }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+           https://api.github.com/repos/MRRSoft/znode10-devops/actions/workflows/z10-multi-environment-deployment_all.yml/dispatches \
+          -d '{
+           "ref": "master",
+            "inputs": {
+            "branch": "${{ inputs.branch }}",
+            "environment": "${{ inputs.environment }}",
+            "services": "{\"wbst\": ${{ inputs.webstore }}, \"pgbld\": ${{ inputs.pagebuilder }}, \"admin\": false, \"api\": false, \"gateway\": false, \"customtable\": false, \"v2\": false, \"schema-web\": false, \"ap-schema\": false, \"adm-schema\": false, \"a-commerce\": false, \"getcp\": false, \"portal\": false, \"gtest\": false, \"vtest\": false, \"paymngr\": false, \"spreedly\": false, \"braintree\": false }"
+                  }
+            }'

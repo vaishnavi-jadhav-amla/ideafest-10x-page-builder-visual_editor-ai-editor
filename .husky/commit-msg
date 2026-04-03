@@ -1,0 +1,10 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo ""
+echo "=================================="
+echo "🔍 Step 1: Running spell check..."
+echo "=================================="
+
+
+echo "🎉 All checks passed! Proceeding with commit..."

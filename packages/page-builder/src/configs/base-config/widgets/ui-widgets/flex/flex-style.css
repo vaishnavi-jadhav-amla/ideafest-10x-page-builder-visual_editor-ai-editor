@@ -1,0 +1,38 @@
+/*
+  CSS properties for References
+  ---------------------------------
+  Target CSS in Webstore: .flex-render .flex-component > div.
+  Target CSS in PageBuilder: .flex-render [id^="Flex-"][id$="\3A flex"] > div
+
+*/
+
+.flex-render .flex-component > div,
+.flex-render [id^="Container-"][id$="\3A Container"] > div {
+  min-width: 0px;
+}
+
+/* Avoid Flickering Issue while using Carousel in Page-Builder */
+.flex-render [id^="Container-"][id$="\3A Container"] > div:has(.swiper-container) {
+  width: 100%;
+}
+
+/* Avoid Flickering Issue while using Carousel in Webstore */
+.flex-render .flex-component > div:has(.swiper-container) {
+  width: 100%;
+}
+
+/* Small Screens */
+@media (max-width: 480px) {
+  .flex-render:has(.responsiveness) .flex-component,
+  .flex-render:has(.responsiveness) [id^="Container-"][id$="\3A Container"] {
+    flex-direction: column !important;
+    flex-wrap: wrap !important;
+  }
+
+  .flex-render:has(.responsiveness) .flex-component > div,
+  .flex-render:has(.responsiveness) [id^="Container-"][id$="\3A Container"] > div {
+    min-width: 100%;
+    width: 100%;
+    max-width: 100%;
+  }
+}

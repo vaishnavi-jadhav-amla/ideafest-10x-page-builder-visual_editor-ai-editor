@@ -1,0 +1,71 @@
+name: Release tag for Webstore
+
+on:
+  repository_dispatch:
+    types: [release_tag]
+jobs: 
+  release:
+    name: Auto Increment Release Tag
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository code
+      - name: Checkout code
+        uses: actions/checkout@v2 
+
+      # Fetch the latest tag and increment the version
+      - name: Get the latest tag and increment
+        id: increment_tag
+        run: |
+          # GitHub API token for authentication
+          GITHUB_TOKEN=${{ secrets.PAT }}
+
+          # Fetch the latest tag from the repository (paginate if necessary)
+          response=$(curl -s -H "Authorization: token $GITHUB_TOKEN" "https://api.github.com/repos/MRRSoft/znode-webstore10x-page-builder/tags")
+
+          # Debug: Print raw response to see structure
+          echo "Raw API Response: $response"
+
+          # Check if the response contains an array of tags
+          if echo "$response" | jq empty > /dev/null 2>&1; then
+            # Process the valid JSON response
+            latest_tag=$(echo "$response" | jq -r '.[].name' | grep -E '^v10.0.0-pilot.[0-9]+$' | sort -V | tail -n 1)
+
+            if [ -z "$latest_tag" ]; then
+              echo "No valid tags found, starting from v10.0.0-pilot.1"
+              latest_tag="v10.0.0-pilot.0"
+            fi
+          else
+            echo "Error: Invalid response from GitHub API"
+            exit 1
+          fi
+
+          echo "Latest tag: $latest_tag"
+
+          # Extract the numeric part from the tag (e.g., 15 from v10.0.0-pilot.15)
+          version_number=$(echo "$latest_tag" | grep -oP '\d+$')
+          new_version_number=$((version_number + 1))
+
+          # Construct the new tag and release name
+          new_tag="v10.0.0-pilot.$new_version_number" 
+          new_release_name="Znode10-$new_tag-Release"
+          echo "New tag: $new_tag"
+          echo "New release name: $new_release_name"  
+
+          # Set the new tag and release name as environment variables
+          echo "tag_name=$new_tag" >> $GITHUB_ENV
+          echo "release_name=$new_release_name" >> $GITHUB_ENV
+
+      # Create a new release with the incremented tag
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT }}
+        with:
+          tag_name: ${{ env.tag_name }}
+          release_name: ${{ env.release_name }}
+          body: |
+            Release ${{ env.release_name }} created with tag ${{ env.tag_name }}.
+          draft: false
+          prerelease: true

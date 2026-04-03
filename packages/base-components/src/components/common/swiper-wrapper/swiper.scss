@@ -1,0 +1,54 @@
+.swiper-wrapper {
+  margin: 2px 5px;
+  .swiper-slide {
+    height: auto !important;
+  }
+}
+
+.swiper-position-left {
+  .swiper-wrapper {
+    justify-content: flex-start;
+  }
+}
+
+.swiper-position-center {
+  .swiper-wrapper {
+    justify-content: center;
+  }
+}
+
+.swiper-position-right {
+  .swiper-wrapper {
+    justify-content: flex-end;
+  }
+}
+
+// Default styling for screens less than 1200px
+.swiper-position-left {
+  .swiper-wrapper {
+    justify-content: flex-start;
+  }
+}
+
+.swiper-position-center {
+  .swiper-wrapper {
+    justify-content: center;
+  }
+}
+
+.swiper-position-right {
+  .swiper-wrapper {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 1200px) {
+  .swiper-position-left,
+  .swiper-position-right,
+  .swiper-position-center {
+    .swiper-wrapper {
+      margin: 0;
+      justify-content: space-between;
+    }
+  }
+}

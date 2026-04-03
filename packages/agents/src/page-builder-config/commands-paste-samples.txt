@@ -1,0 +1,54 @@
+Page builder config — paste samples (same as page-builder-chat UI)
+===================================================================
+Use with parsePageBuilderCommands() or paste into "Apply commands" in
+apps/page-builder-chat. No OPENAI_API_KEY required.
+
+--------------------------------------------------------------------------------
+SAMPLE A — title only
+--------------------------------------------------------------------------------
+
+{"kind":"merge_root_props","target":"main","props":{"title":"Hello from commands"}}
+
+--------------------------------------------------------------------------------
+SAMPLE B — category PLP (NDJSON)
+--------------------------------------------------------------------------------
+
+{"kind":"set_page_key","key":"category/{}"}
+{"kind":"merge_root_props","target":"main","props":{"title":"Category listing"}}
+{"kind":"append_component","target":"main","componentType":"ProductListPage","props":{"config":{"id":"category"}},"id":"ProductListPage-demo-001"}
+
+--------------------------------------------------------------------------------
+SAMPLE C — product PDP (JSON array)
+--------------------------------------------------------------------------------
+
+[
+  {"kind":"set_page_key","key":"product/{}"},
+  {"kind":"merge_root_props","target":"main","props":{"title":"Product details"}},
+  {"kind":"append_component","target":"main","componentType":"ProductDetailsPage","props":{"config":{"id":"product"}},"id":"ProductDetailsPage-demo-001"}
+]
+
+--------------------------------------------------------------------------------
+SAMPLE D — one EmptyBox
+--------------------------------------------------------------------------------
+
+{"kind":"append_component","target":"main","componentType":"EmptyBox","props":{},"id":"EmptyBox-paste-demo-001"}
+
+--------------------------------------------------------------------------------
+SAMPLE E — remove ProductListPage from SAMPLE B (run after B)
+--------------------------------------------------------------------------------
+
+{"kind":"remove_component","target":"main","componentId":"ProductListPage-demo-001"}
+
+--------------------------------------------------------------------------------
+SAMPLE F — update main root props
+--------------------------------------------------------------------------------
+
+{"kind":"merge_root_props","target":"main","props":{"title":"Updated title","subtitle":"Paste sample"}}
+
+--------------------------------------------------------------------------------
+SAMPLE G — title + two EmptyBoxes (NDJSON)
+--------------------------------------------------------------------------------
+
+{"kind":"merge_root_props","target":"main","props":{"title":"Two boxes"}}
+{"kind":"append_component","target":"main","componentType":"EmptyBox","props":{},"id":"EmptyBox-stack-a"}
+{"kind":"append_component","target":"main","componentType":"EmptyBox","props":{},"id":"EmptyBox-stack-b"}

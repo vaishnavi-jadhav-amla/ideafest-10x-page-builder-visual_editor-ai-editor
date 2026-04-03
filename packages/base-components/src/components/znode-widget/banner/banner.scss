@@ -1,0 +1,40 @@
+.carousel-root {
+  &:focus {
+    border-radius: 4px;
+    outline: var(--focus-outline-width) solid var(--focus-outline-color);
+    box-shadow: 0 0 0 var(--focus-outline-width) var(--focus-outline-color);
+  }
+
+  .carousel {
+    .thumbs {
+      display: flex;
+      justify-content: center;
+      padding: 5px;
+
+      button,
+      a,
+      .thumb {
+        &:focus {
+          border-radius: 4px;
+          outline: var(--focus-outline-width) solid var(--focus-outline-color);
+          box-shadow: 0 0 0 var(--focus-outline-width) var(--focus-outline-color);
+          outline-offset: 2px;
+        }
+      }
+    }
+    .thumbs-wrapper {
+      margin: 16px !important;
+    }
+
+    button,
+    a,
+    li {
+      &:focus {
+        border-radius: 4px;
+        outline: var(--focus-outline-width) solid var(--focus-outline-color);
+        box-shadow: 0 0 0 var(--focus-outline-width) var(--focus-outline-color);
+        outline-offset: 4px;
+      }
+    }
+  }
+}

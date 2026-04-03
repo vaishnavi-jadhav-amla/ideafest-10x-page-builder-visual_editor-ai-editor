@@ -1,0 +1,17 @@
+.star-rating {
+  span {
+    margin-right: 0;
+  }
+
+  .on {
+    svg {
+      fill: #000;
+    }
+  }
+
+  .off {
+    svg {
+      fill: #ffffff;
+    }
+  }
+}

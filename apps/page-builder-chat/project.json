@@ -1,0 +1,25 @@
+{
+  "name": "page-builder-chat",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/page-builder-chat",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "dev": {
+      "continuous": true,
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/page-builder-chat",
+        "command": "node ../../node_modules/next/dist/bin/next dev --port 3000"
+      }
+    },
+    "dev-standalone": {
+      "continuous": true,
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "apps/page-builder-chat",
+        "command": "node ../../node_modules/next/dist/bin/next dev --port 3000"
+      }
+    }
+  }
+}

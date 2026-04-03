@@ -1,0 +1,16 @@
+{
+    "data": [
+        {
+            "countryId": 180,
+            "countryCode": "US",
+            "countryName": "United States",
+            "isDefault": true
+        },
+        {
+            "countryId": 207,
+            "countryCode": "FR",
+            "countryName": "France",
+            "isDefault": false
+        }
+    ]
+}

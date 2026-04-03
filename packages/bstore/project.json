@@ -1,0 +1,9 @@
+{
+  "name": "bstore",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/bstore/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project bstore --web",
+  "targets": {}
+}

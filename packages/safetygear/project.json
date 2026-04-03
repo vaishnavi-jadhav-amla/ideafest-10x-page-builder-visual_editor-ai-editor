@@ -1,0 +1,9 @@
+{
+  "name": "safetygear",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "packages/safetygear/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project safetygear --web",
+  "targets": {}
+}

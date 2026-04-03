@@ -1,0 +1,22 @@
+nav {
+  ul li {
+    border-bottom: 4px solid transparent;
+
+    &:hover {
+      border-color: var(--primaryColor);
+    }
+  }
+
+  & + ul {
+    margin-top: 4px;
+
+    li {
+      border-bottom: 4px solid transparent;
+      padding: 4px 0;
+
+      &:hover {
+        border-color: var(--primaryColor);
+      }
+    }
+  }
+}

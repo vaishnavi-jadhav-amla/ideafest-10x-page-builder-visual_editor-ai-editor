@@ -1,0 +1,119 @@
+header {
+  background-color: #fff;
+  position: fixed;
+  top: 0;
+}
+
+/* For Webkit Browsers */
+body::-webkit-scrollbar {
+  width: 12px; /* width of the scrollbar */
+}
+
+body::-webkit-scrollbar-track {
+  background: #f1f1f1; /* color of the track */
+}
+
+.h-w-fit {
+  height: -webkit-fill-available !important;
+}
+
+.w-w-fit {
+  width: -webkit-fill-available !important;
+}
+
+.text-13 {
+  font-size: 13px;
+}
+
+.clip-bottom {
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+body::-webkit-scrollbar-thumb {
+  background-color: #888; /* color of the thumb */
+  border-radius: 6px; /* roundness of the thumb */
+  border: 3px solid #fff; /* border around the thumb */
+}
+
+body::-webkit-scrollbar-thumb:hover {
+  background-color: #555; /* color of the thumb on hover */
+}
+
+@-moz-document url-prefix() {
+  .custom-scroll {
+    scrollbar-width: thin; /* Make scrollbars thinner */
+    scrollbar-color: #888 #f1f1f1; /* Thumb color and track color */
+  }
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 12px; /* width of the scrollbar */
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1; /* color of the track */
+  border-radius: 6px;
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background-color: #888; /* color of the thumb */
+  border-radius: 6px; /* roundness of the thumb */
+  border: 3px solid #fff; /* border around the thumb */
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #555; /* color of the thumb on hover */
+}
+
+.custom-scroll::-webkit-scrollbar {
+  width: 12px; /* width of the scrollbar */
+}
+
+.custom-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1; /* color of the track */
+}
+
+.custom-scroll::-webkit-scrollbar-thumb {
+  background-color: #888; /* color of the thumb */
+  border-radius: 6px; /* roundness of the thumb */
+  border: 3px solid #fff; /* border around the thumb */
+}
+
+.custom-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: #555; /* color of the thumb on hover */
+}
+
+.rc-table {
+  thead {
+    th {
+      text-align: left;
+      background: #f7f7f7;
+      padding: 10px;
+    }
+  }
+}
+
+.breadcrumb-category {
+  span {
+    a:hover {
+      color: var(--hover);
+      text-decoration: underline;
+    }
+  }
+  a:hover {
+    color: var(--hover);
+    text-decoration: underline;
+  }
+}
+
+::placeholder {
+  color: #757575 !important;
+}
+
+.shadow-right-none {
+  box-shadow: -2px 0px 2px 0px rgba(0, 0, 0, 0.1); /* adjust the values as per your requirement */
+}
+
+.wishlist-col{
+  background: #f7f7f7;
+}

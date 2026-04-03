@@ -1,0 +1,33 @@
+version: '3.8'
+name: "znode10x"
+
+networks:
+  Znode10xAPINetworkExternal:
+    driver: bridge
+    internal: false
+    name: Znode10xAPINetworkExternal
+    external: true
+
+services:
+  Znode10xWebstore:
+    restart: always
+    image: "${AmlaRegistry}/${ImageName}:${Tag}"
+
+    build:
+      context: .
+      dockerfile: ${FilePath}
+      args:
+        EnvFile: /apps/${AppName}/.env
+
+    networks:
+      Znode10xAPINetworkExternal:
+        aliases:
+          - Znode10xAPIExternalNetwork_WebstoreAlias
+
+    container_name: Znode10x${AppName}
+
+    ports:
+      - "3000:3000"
+      - "3000:443"
+
+

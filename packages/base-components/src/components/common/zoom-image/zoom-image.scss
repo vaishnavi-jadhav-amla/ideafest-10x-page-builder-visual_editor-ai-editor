@@ -1,0 +1,58 @@
+.zoom-container {
+  position: relative;
+  width: 350px;
+  height: 350px;
+  max-width: 800px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: auto;
+  &:hover {
+    cursor: crosshair;
+  }
+}
+.image-container {
+  width: 100%;
+  height: 600px;
+  display: inline-block;
+  vertical-align: top;
+  overflow: hidden;
+  position: relative;
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: cover;
+  }
+}
+.zoomed-container {
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  z-index: 999;
+  box-shadow: 0px 0px 4px 0px #a7a7a7;
+}
+.right {
+  right: -420px;
+  top: 10px;
+}
+.left {
+  left: -420px;
+  top: 10px;
+}
+.zoom-image {
+  display: block;
+  width: 100%;
+  height: 350px;
+  object-fit: contain;
+  transition: transform 0.3s ease;
+}
+.zoomed-center-container {
+  background-size: 150%;
+  background-repeat: no-repeat;
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  margin-top: -0.5rem;
+  z-index: 999;
+  top: 10px;
+}

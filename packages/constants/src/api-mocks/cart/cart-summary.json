@@ -1,0 +1,26 @@
+{
+    "cartId": "65cf3353-0a8e-f011-b485-000d3a533840",
+    "subTotal": 100,
+    "total": 100,
+    "costs": [
+        {
+            "name": "OrderLevelShipping",
+            "value": "0",
+            "description": ""
+        }
+    ],
+    "discounts": [],
+    "totalDiscount": 0,
+    "shippingCost": 0,
+    "handlingFee": 0,
+    "hasDiscount": false,
+    "currencyCode": "USD",
+    "importDuty": 0,
+    "taxCost": 0,
+    "shippingDiscount": 0,
+    "giftCardAmount": 0,
+    "orderTotalWithoutVoucher": 100,
+    "csrDiscountAmount": 0,
+    "taxSummaryList": [],
+    "taxMessageList": []
+}

@@ -1,0 +1,19 @@
+.directions-sprite {
+  background: url("https://maps.gstatic.com/mapfiles/dir/tt3.png") no-repeat;
+  display: inline-block;
+}
+
+.turn-right {
+  width: 35px;
+  height: 27px;
+  background-position: 1px -63px;
+}
+
+.navigation-icon {
+  width: 35px;
+  height: 30px;
+}
+
+.accordion-item-width {
+  width: 21rem;
+}

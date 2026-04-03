@@ -1,0 +1,43 @@
+export const REQUIRED_PORTAL_KEYS = ["PortalId", "LocaleId", "PublishState", "PublishCatalogId", "PortalLocales", "StoreCode", "ThemeName", "CatalogCode"];
+export const AVAILABLE_THEME_NAME = ["B2B", "theme1", "theme2", "B2B_B2B"];
+export const REQUIRED_DOMAIN_KEYS = ["StoreCode", "ApplicationType"];
+export const DEFAULT_THEME_COLORS = `:root {
+  --primary: rgb(0, 0, 0);
+  --secondary: rgb(255, 255, 255);
+  --primary-btn-bg: rgb(0, 0, 0);
+  --secondary-btn-bg: rgb(255, 255, 255);
+  --primary-btn-text: rgb(255, 255, 255);
+  --secondary-btn-text: rgb(0, 0, 0);
+  --btn-border: rgb(0, 0, 0);
+  --btn-border-radius: 0.25rem;
+  --header-bg: rgb(255, 255, 255);
+  --footer-bg: rgb(0, 0, 0);
+  --footer-primary-text: rgb(255, 255, 255);
+  --footer-secondary-text: rgb(255, 255, 255);
+  --navigation-bar-bg: rgb(243, 244, 246);
+  --navigation-text: rgb(96, 84, 88);
+  --link: rgb(30, 64, 175);
+  --hover: rgb(59, 130, 246);
+  --success: rgb(34, 197, 94);
+  --error: rgb(194, 52, 41);
+  --border-color: rgb(156, 163, 175);
+  --breadcrumbs-text: rgb(74, 74, 74);
+  --card-radius: 0.25rem;
+  --card-border: rgb(226, 232, 240);
+  --input-radius: 0.25rem;
+  --input-border: rgb(211, 211, 211);
+  --separator: rgb(156, 163, 175);
+  --accent: rgb(0, 0, 0);
+  --widget-edit-bar: rgb(93, 176, 67);
+  --mega-menu-bg: rgb(241, 241, 241);
+  --ticker-bg: rgb(0, 0, 0);
+  --mega-menu-link: rgb(68, 64, 60);
+  --loader-color: rgb(0, 0, 0);
+  --impersonation-bar-bg: rgb(0, 0, 0);
+
+
+  --focus-outline-color: rgb(0, 0, 0);
+  --focus-outline-width: 2px;
+  --focus-outline-radius: 4px;
+  --widget-color:rgb(78, 73, 73);
+}`;

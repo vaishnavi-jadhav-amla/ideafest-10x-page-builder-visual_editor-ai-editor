@@ -1,0 +1,10 @@
+.scratch-attribute {
+  background: linear-gradient(to top left, #fff calc(50% - 1px), #9e9e9e, #fff calc(50% + 1px));
+}
+
+.scratch-img-attribute {
+  width: calc(100% + 15px);
+  border-bottom: 2px solid #9e9e9e;
+  transform: rotate(-45deg);
+  transform-origin: left;
+}

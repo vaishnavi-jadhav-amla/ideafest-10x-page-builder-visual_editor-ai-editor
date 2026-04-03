@@ -1,0 +1,183 @@
+.carousels,
+.carousel-promo,
+.carousel-category {
+  width: 99% !important;
+  scrollbar-color: transparent;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 9%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  height: -webkit-fit-content;
+  .control-dots .dot {
+    border: 1px solid #fff;
+
+    &.selected {
+      background: #000;
+    }
+  }
+
+  .left-arrow,
+  .right-arrow {
+    svg path {
+      fill: #000;
+    }
+
+    &:hover {
+      svg path {
+        fill: #fff;
+      }
+    }
+  }
+}
+
+.snaps-inline {
+  scroll-snap-type: inline mandatory;
+  scroll-padding-inline: 0.5rem;
+}
+.snaps-inline > * {
+  scroll-snap-align: start;
+}
+// Card Carousal Css
+.carousel-container {
+  height: auto;
+  user-select: none;
+}
+.carousel.dragging {
+  cursor: grab;
+  scroll-behavior: auto;
+}
+.wrapper .left-btn {
+  left: 0%;
+}
+.wrapper .right-btn {
+  right: 0%;
+}
+.slide-card {
+  display: grid;
+  grid-template-rows: max-content;
+}
+
+.carousels::-webkit-scrollbar {
+  display: none;
+}
+
+.carousels {
+  scrollbar-width: none; /* For Firefox */
+  -ms-overflow-style: none; /* For Internet Explorer and Edge */
+
+  &::-webkit-scrollbar {
+    display: none; /* For Chrome, Safari, and Opera */
+  }
+}
+
+@media screen and (max-width: 2500px) {
+  .carousel-category {
+    grid-auto-columns: 9%;
+  }
+  
+}
+
+@media screen and (max-width: 2000px) {
+  .carousels {
+    grid-auto-columns: 15.5%;
+  }
+  .carousel-promo {
+    grid-auto-columns: 24%;
+  }
+  .carousel-category {
+    grid-auto-columns: 9%;
+  }
+}
+@media screen and (max-width: 1650px) {
+  .carousels {
+    grid-auto-columns: 19%;
+  }
+  .carousel-category {
+    grid-auto-columns: 11%;
+  }
+}
+@media screen and (max-width: 1575px) {
+  .carousels {
+    grid-auto-columns: 21%;
+  }
+  .carousel-promo {
+    grid-auto-columns: 30%;
+  }
+  .carousel-category {
+    grid-auto-columns: 11%;
+  }
+}
+@media screen and (max-width: 1335px) {
+  .carousels {
+    grid-auto-columns: 23%;
+  }
+  .carousel-promo {
+    grid-auto-columns: 30%;
+  }
+  .carousel-category {
+    grid-auto-columns: 11%;
+  }
+}
+@media screen and (max-width: 1280px) {
+  .carousels {
+    grid-auto-columns: 23.8%;
+  }
+  .carousel-promo {
+    grid-auto-columns: 30%;
+  }
+  .carousel-category {
+    grid-auto-columns: 15%;
+  }
+}
+@media screen and (max-width: 1150px) {
+  .carousels {
+    grid-auto-columns: 29%;
+  }
+  .carousel-promo {
+    grid-auto-columns: 48%;
+  }
+
+  .carousel-category {
+    grid-auto-columns: 15%;
+  }
+}
+@media screen and (max-width: 1024px) {
+  .carousel-category {
+    grid-auto-columns: 19%;
+  }
+}
+@media screen and (max-width: 910px) {
+  .carousels {
+    grid-auto-columns: 40%;
+  }
+  .carousel-category {
+    grid-auto-columns: 19%;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .carousels {
+    grid-auto-columns: 48%;
+  }
+  .carousel-promo {
+    grid-auto-columns: 48%;
+  }
+  .carousel-category {
+    grid-auto-columns: 28%;
+  }
+}
+
+@media screen and (max-width: 550px) {
+  .carousels {
+    width: 100%;
+    grid-auto-columns: 97%;
+  }
+  .carousel-category {
+    grid-auto-columns: 50%;
+  }
+  .pdp-slider {
+    width: 100%;
+    grid-auto-columns: 45%;
+  }
+}

@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #e11d48; /* Neon pink */
+  --color-secondary: #14b8a6; /* Neon teal */
+  --color-accent: #facc15; /* Bright yellow */
+  --color-background: #000000; /* Black */
+  --color-foreground: #ffffff; /* White */
+
+  --border-radius-none: 0px;
+  --border-radius-md: 0.5rem;
+  --border-radius-lg: 1rem;
+
+  --spacing-72: 18rem;
+  --spacing-96: 24rem;
+  --spacing-120: 30rem;
+
+  --box-shadow-neon: 0 0 15px rgba(225, 29, 72, 0.8);
+}
