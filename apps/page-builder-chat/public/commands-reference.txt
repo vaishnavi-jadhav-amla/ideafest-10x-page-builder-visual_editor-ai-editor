@@ -23,7 +23,8 @@ Type **help** in chat for the full list.
 
 CMS widgets (chat — gateway-backed)
 -----------------------------------
-  add banner slider          → SliderList, then pick a row (SaveCMSWidgetSliderBanner + new block)
+  add link panel | add links | add link | add a link   → **Submit** = POST CreateUpdateLinkWidgetConfiguration; **Add more** + **Submit** reuses same WidgetsKey (only Title/Url change); **Finalise** = page JSON / LinkPanel widgetKey
+  add banner slider | add banner | add bannerslider | add BannerSlider  → same: SliderList, pick row (SaveCMSWidgetSliderBanner + new block)
   add product carousel       → new widgetsKey, unassociated products, AssociateProduct + new block
   update product carousel    → reuse last ProductsCarousel widgetKey on the page (or env default)
   update ProductsCarousel-<uuid>   → product list + AssociateProduct only (no duplicate block; must match props.id)

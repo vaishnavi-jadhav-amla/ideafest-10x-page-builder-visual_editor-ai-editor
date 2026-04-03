@@ -96,9 +96,12 @@ export async function runPageBuilderLlmWorkflow(options: PageBuilderLlmWorkflowO
     model = "gpt-4o",
     systemPrompt = [
       "You are a Znode page builder assistant. The user provides Puck page JSON (IPageStructure).",
-      "When changes are needed, call apply_page_builder_commands exactly with a commands array.",
-      "Use only the tool schema: kind, target (main|header|footer), componentType, componentId, props, key, zones.",
-      "Use camelCase. Do not invent component types that the theme does not register.",
+      "You MUST call the tool apply_page_builder_commands on every turn. Pass a commands array (possibly empty if the request is unrelated or impossible). Never answer only with plain text when a page edit was requested.",
+      "Kinds: set_page_key, merge_root_props, clear_content, append_component, remove_component, merge_component_props, replace_zones. target is main|header|footer for canvas/header/footer data.",
+      "Visible widgets often use PascalCase types: Heading, Text, ButtonGroup. If the user wants BOTH a heading and body copy in one request, output TWO append_component commands in order: Heading first, then Text.",
+      "If the user names an existing block id (e.g. Heading-… or Heading-<timestamp>-<shortId>) to edit in place: use merge_component_props only — never append_component for that. Heading: textColor, background, align, level (\"1\"–\"6\"), size (xxxl…default), text. Text: color (theme default|muted), text, size (s|m), weight (normal|semibold|bold|extrabold).",
+      "British spelling centre means align center. Home Page Promo / homepage promo is handled by the server; do not fake it with Heading/Text — use an empty commands array if the user only asked for that widget name without other edits.",
+      "Use the tool schema property names (camelCase enums). The server accepts snake_case kind aliases too.",
     ].join(" "),
     commandsOverride,
   } = options;
@@ -121,6 +124,11 @@ export async function runPageBuilderLlmWorkflow(options: PageBuilderLlmWorkflowO
   }
 
   const tools = getPageBuilderOpenAiTools() as object[];
+  /** Match Ollama semantics: every completion includes a commands list (here via a mandatory tool call). */
+  const toolChoice = {
+    type: "function" as const,
+    function: { name: "apply_page_builder_commands" },
+  };
   const body = {
     model,
     messages: [
@@ -131,7 +139,7 @@ export async function runPageBuilderLlmWorkflow(options: PageBuilderLlmWorkflowO
       },
     ],
     tools,
-    tool_choice: "auto" as const,
+    tool_choice: toolChoice,
   };
 
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -160,14 +168,32 @@ export async function runPageBuilderLlmWorkflow(options: PageBuilderLlmWorkflowO
     if (call.type !== "function" || call.function?.name !== "apply_page_builder_commands") {
       continue;
     }
-    const args = JSON.parse(call.function.arguments) as { commands: PageBuilderCommand[] };
-    toolArgumentsParsed.push(args);
-    lastResult = applyPageBuilderCommands(working, args.commands);
+    let commands: PageBuilderCommand[] = [];
+    try {
+      const args = JSON.parse(call.function.arguments) as { commands?: unknown };
+      commands = Array.isArray(args.commands) ? (args.commands as PageBuilderCommand[]) : [];
+    } catch {
+      lastResult = {
+        page: working,
+        applied: 0,
+        errors: [{ commandIndex: 0, message: "Invalid JSON in apply_page_builder_commands arguments" }],
+      };
+      assistantContent =
+        (assistantContent ? `${assistantContent}\n\n` : "") +
+        "(Tool arguments were not valid JSON; nothing was applied.)";
+      toolArgumentsParsed.push({ commands: [] });
+      continue;
+    }
+    toolArgumentsParsed.push({ commands });
+    lastResult = applyPageBuilderCommands(working, commands);
     working = lastResult.page;
   }
 
   if (toolCalls.length === 0) {
     lastResult = applyPageBuilderCommands(page, []);
+    assistantContent =
+      (assistantContent ? `${assistantContent}\n\n` : "") +
+      "(Expected apply_page_builder_commands tool call was missing; page unchanged.)";
   }
 
   return {
