@@ -8,10 +8,19 @@ const { composePlugins, withNx } = require("@nx/next");
 const nextConfig = {
   nx: { svgr: false },
   reactStrictMode: true,
-  /** Next.js 15+ only; omitted here so Next 14 (workspace default) does not warn. */
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "ALLOWALL" },
+          { key: "Content-Security-Policy", value: "frame-ancestors *" },
+        ],
+      },
+    ];
+  },
   webpack(config, { dev }) {
     if (dev) {
-      // Windows / large repos: if the dev server seems stuck on "Starting...", set NEXT_DEV_POLL=1
       if (process.env.NEXT_DEV_POLL === "1") {
         config.watchOptions = {
           ...config.watchOptions,

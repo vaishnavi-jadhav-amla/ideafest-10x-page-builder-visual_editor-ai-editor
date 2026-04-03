@@ -6,7 +6,7 @@ import { ChatPageClientUI } from "../chat-page-client-ui";
 import type { ChatPageClientProps } from "../chat-page-client-ui";
 
 export function ChatPageClientButton(props: Readonly<ChatPageClientProps>) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   return (
     <>
