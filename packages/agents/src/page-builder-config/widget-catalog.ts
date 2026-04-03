@@ -159,50 +159,6 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
     },
   },
   {
-    componentType: "Hero",
-    category: "ui",
-    description:
-      "Hero banner section with title, description, buttons array, optional image (URL + mode: inline/background), and alignment.",
-    requiresCmsPicker: false,
-    visualHint:
-      "Use for a large hero/banner section at the top of a page with a big title, subtitle text, and CTA buttons. May have a background image.",
-    defaultProps: {
-      title: "Hero",
-      align: "left",
-      description: "Description",
-      buttons: [{ label: "Learn more", href: "#" }],
-      padding: { top: "0", right: "0", bottom: "0", left: "0" },
-    },
-  },
-  {
-    componentType: "Card",
-    category: "ui",
-    description:
-      "A simple card component with title, description, icon (lucide-react icon name), and mode (flat/card).",
-    requiresCmsPicker: false,
-    visualHint:
-      "Use for feature cards, info cards, or small content blocks with an icon, title and description.",
-    defaultProps: {
-      title: "Title",
-      description: "Description",
-      icon: "Feather",
-      mode: "flat",
-    },
-  },
-  {
-    componentType: "Logo",
-    category: "ui",
-    description: "Logo display widget with an array of logos (alt + imageUrl).",
-    requiresCmsPicker: false,
-    visualHint:
-      "Use when you see a company logo, partner logos row, or brand identity element.",
-    defaultProps: {
-      logos: [
-        { alt: "Logo", imageUrl: "" },
-      ],
-    },
-  },
-  {
     componentType: "RichTextWidget",
     category: "ui",
     description:
@@ -558,53 +514,6 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
           },
         },
         widgetConfig: {},
-      },
-    },
-  },
-  {
-    componentType: "Ticker",
-    category: "znode",
-    description:
-      "Scrolling ticker/marquee widget for announcements or promotions.",
-    requiresCmsPicker: true,
-    visualHint:
-      "Use when the image shows a scrolling announcement bar, ticker tape, or marquee text strip.",
-    defaultProps: {
-      response: null,
-      config: {
-        type: "Widget",
-        id: "TickerWidget",
-        hasConfigurable: false,
-        widgetConfig: {
-          masterWidgetKey: "1786",
-          widgetKey: "1786",
-          typeOfMapping: "PortalMapping",
-          widgetCode: "HomePageTicker",
-          displayName: "Home Page Ticker",
-        },
-      },
-    },
-  },
-  {
-    componentType: "TextEditor",
-    category: "znode",
-    description:
-      "CMS-managed text editor content block. Content is fetched from the CMS by widget key.",
-    requiresCmsPicker: true,
-    visualHint:
-      "Use when the image shows a block of CMS-managed rich content that should be editable via the CMS admin.",
-    defaultProps: {
-      response: null,
-      config: {
-        type: "Widget",
-        id: "TextEditorWidget",
-        hasConfigurable: false,
-        widgetConfig: {
-          widgetKey: "565767",
-          typeOfMapping: "PortalMapping",
-          widgetCode: "TextEditor",
-          displayName: "Text Editor",
-        },
       },
     },
   },

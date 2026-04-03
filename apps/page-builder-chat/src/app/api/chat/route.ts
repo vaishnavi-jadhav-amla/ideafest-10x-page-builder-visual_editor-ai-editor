@@ -13,6 +13,7 @@ import { runPageBuilderLlmWorkflow } from "@znode/agents/page-builder-config/wor
 import {
   runOpenAiVisionCommands,
   runOllamaVisionCommands,
+  runClaudeVisionCommands,
   formatCmsWidgetSuggestions,
 } from "@znode/agents/page-builder-config/vision-commands";
 import type { IPageStructure } from "@znode/types/visual-editor";
@@ -24,6 +25,7 @@ import {
   getOllamaConfig,
   getOllamaRequestTuning,
   isOpenAiChatReady,
+  isClaudeChatReady,
   isPageBuilderChatAiEnabled,
 } from "../../../lib/chat-flags";
 import {
@@ -736,6 +738,7 @@ export async function POST(req: Request) {
       const llmPref = getLlmProviderPreference();
       const ollama = getOllamaConfig();
       const apiKey = process.env.OPENAI_API_KEY?.trim();
+      const claudeApiKey = process.env.ANTHROPIC_API_KEY?.trim();
       const ollamaVisionModel =
         process.env.PAGE_BUILDER_CHAT_OLLAMA_VISION_MODEL?.trim() ||
         process.env.PAGE_BUILDER_CHAT_OLLAMA_MODEL?.trim() ||
@@ -747,6 +750,9 @@ export async function POST(req: Request) {
         (llmPref === "openai" || llmPref === "auto") &&
         isPageBuilderChatAiEnabled() &&
         Boolean(apiKey);
+      const useClaudeVision =
+        (llmPref === "claude" || llmPref === "auto") &&
+        Boolean(claudeApiKey);
 
       let visionResult: import("@znode/agents/page-builder-config/vision-commands").VisionAnalysisResult | null =
         null;
@@ -768,7 +774,7 @@ export async function POST(req: Request) {
           visionSource = "ollama-vision";
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
-          if (llmPref !== "auto" || !useOpenAiVision) {
+          if (llmPref !== "auto" || (!useClaudeVision && !useOpenAiVision)) {
             return jsonResult({
               assistantContent: `**Ollama vision error:** ${msg}\n\nEnsure a vision model (e.g. \`llava\`) is installed: \`ollama pull ${ollamaVisionModel}\`.`,
               page: body.page,
@@ -776,6 +782,34 @@ export async function POST(req: Request) {
               errors: [],
               toolArgumentsParsed: [],
               source: "ollama-vision-error",
+            });
+          }
+          /* auto: fall through to Claude / OpenAI */
+        }
+      }
+
+      if (!visionResult && useClaudeVision && claudeApiKey) {
+        try {
+          visionResult = await runClaudeVisionCommands({
+            page: body.page,
+            imageBase64: body.imageBase64,
+            imageMimeType: body.imageMimeType,
+            userMessage: body.message,
+            apiKey: claudeApiKey,
+            model: process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-20250514",
+          });
+          visionSource = "claude-vision";
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          console.log("[vision] Claude vision error:", msg);
+          if (llmPref !== "auto" || !useOpenAiVision) {
+            return jsonResult({
+              assistantContent: `**Claude vision error:** ${msg}`,
+              page: body.page,
+              applied: 0,
+              errors: [],
+              toolArgumentsParsed: [],
+              source: "claude-vision-error",
             });
           }
           /* auto: fall through to OpenAI */
@@ -809,8 +843,8 @@ export async function POST(req: Request) {
       if (!visionResult) {
         return jsonResult({
           assistantContent:
-            "No vision AI engine available. Set **OPENAI_API_KEY** (gpt-4o) or configure **Ollama** with a vision model (e.g. `llava`):\n" +
-            "```\nPAGE_BUILDER_CHAT_OLLAMA_URL=http://127.0.0.1:11434\nPAGE_BUILDER_CHAT_OLLAMA_VISION_MODEL=llava\n```",
+            "No vision AI engine available. Set **ANTHROPIC_API_KEY** (Claude), **OPENAI_API_KEY** (gpt-4o), or configure **Ollama** with a vision model (e.g. `llava`):\n" +
+            "```\nANTHROPIC_API_KEY=sk-ant-...\n# or\nOPENAI_API_KEY=sk-...\n# or\nPAGE_BUILDER_CHAT_OLLAMA_URL=http://127.0.0.1:11434\nPAGE_BUILDER_CHAT_OLLAMA_VISION_MODEL=llava\n```",
           page: body.page,
           applied: 0,
           errors: [],

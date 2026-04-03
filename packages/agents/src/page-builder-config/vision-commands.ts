@@ -46,6 +46,11 @@ export interface RunOpenAiVisionOptions extends RunVisionCommandsOptions {
   model?: string;
 }
 
+export interface RunClaudeVisionOptions extends RunVisionCommandsOptions {
+  apiKey: string;
+  model?: string;
+}
+
 export interface RunOllamaVisionOptions extends RunVisionCommandsOptions {
   baseUrl: string;
   model: string;
@@ -439,6 +444,7 @@ export async function runOpenAiVisionCommands({
   }
 
   const data = (await res.json()) as OpenAiVisionResponse;
+  console.log("[vision] OpenAI raw response JSON:", JSON.stringify(data, null, 2));
   const choice = data.choices?.[0];
   const content = choice?.message?.content;
   const finishReason = choice?.finish_reason;
@@ -458,6 +464,99 @@ export async function runOpenAiVisionCommands({
     }
     throw new Error(
       `OpenAI vision returned no message content (finish_reason: ${finishReason ?? "unknown"}, choices: ${data.choices?.length ?? 0})`
+    );
+  }
+
+  return parseVisionJson(content);
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Claude / Anthropic Vision (claude-sonnet-4-20250514, etc.)                    */
+/* -------------------------------------------------------------------------- */
+
+interface ClaudeVisionResponse {
+  content?: Array<{ type: string; text?: string }>;
+  stop_reason?: string;
+  error?: { type?: string; message?: string };
+}
+
+/**
+ * Analyze an uploaded image using Anthropic Claude (claude-sonnet-4-20250514, etc.).
+ * Claude Messages API uses a different format from OpenAI:
+ *   - system is a top-level field, not a message
+ *   - images use source.type="base64" with media_type + data
+ */
+export async function runClaudeVisionCommands({
+  page,
+  imageBase64,
+  imageMimeType,
+  userMessage,
+  apiKey,
+  model = "claude-sonnet-4-20250514",
+}: RunClaudeVisionOptions): Promise<VisionAnalysisResult> {
+  const pageSnippet = JSON.stringify(page).slice(0, 3000);
+  const userText = userMessage?.trim()
+    ? `Additional context from user: ${userMessage}\n\nCurrent page JSON (for reference):\n${pageSnippet}`
+    : `Current page JSON (for reference):\n${pageSnippet}`;
+
+  console.log("[vision] Claude model:", model);
+
+  const body = {
+    model,
+    max_tokens: 16384,
+    system: VISION_SYSTEM_PROMPT,
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: imageMimeType,
+              data: imageBase64,
+            },
+          },
+          { type: "text", text: userText },
+        ],
+      },
+    ],
+  };
+
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Claude vision call failed: ${res.status} ${text.slice(0, 500)}`);
+  }
+
+  const data = (await res.json()) as ClaudeVisionResponse;
+  console.log("[vision] Claude raw response JSON:", JSON.stringify(data, null, 2));
+  const stopReason = data.stop_reason;
+
+  // Claude returns content as an array of content blocks
+  const textBlock = data.content?.find((b) => b.type === "text");
+  const content = textBlock?.text;
+
+  console.log("[vision] Claude stop_reason:", stopReason, "content length:", content?.length ?? 0);
+
+  if (!content) {
+    if (data.error) {
+      throw new Error(`Claude vision error: ${data.error.message ?? data.error.type ?? "unknown"}`);
+    }
+    if (stopReason === "max_tokens") {
+      throw new Error("Claude vision response was truncated (max tokens reached). The image may be too complex.");
+    }
+    throw new Error(
+      `Claude vision returned no text content (stop_reason: ${stopReason ?? "unknown"}, content blocks: ${data.content?.length ?? 0})`
     );
   }
 
@@ -523,6 +622,7 @@ export async function runOllamaVisionCommands({
   }
 
   const data = (await res.json()) as { message?: { content?: string } };
+  console.log("[vision] Ollama raw response JSON:", JSON.stringify(data, null, 2));
   const content = data.message?.content;
   if (!content || typeof content !== "string") {
     throw new Error("Ollama vision returned no message content");
