@@ -1,11 +1,70 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
+import type { IPageStructure } from "@znode/types/visual-editor";
 
 const CHAT_URL = process.env.NEXT_PUBLIC_PAGE_BUILDER_CHAT_URL || "http://localhost:4200";
 
-export function AiChatIframe() {
+/** postMessage type: page-builder → chat iframe */
+const MSG_BUILDER_SYNC_PAGE = "PAGE_BUILDER_SYNC_PAGE";
+/** postMessage type: chat iframe → page-builder */
+const MSG_CHAT_PAGE_UPDATE = "CHAT_PAGE_UPDATE";
+
+function resolveChatOrigin(url: string): string {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return url;
+  }
+}
+
+export interface AiChatIframeProps {
+  /** Current page structure from the visual editor — kept in sync with the AI chat. */
+  page?: IPageStructure;
+  /** Called when the AI chat produces an updated page structure. */
+  onPageUpdate?: (page: IPageStructure) => void;
+}
+
+export function AiChatIframe({ page, onPageUpdate }: AiChatIframeProps) {
   const [open, setOpen] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const chatOrigin = resolveChatOrigin(CHAT_URL);
+
+  /** Send the current page structure into the chat iframe. */
+  const sendPageToChat = useCallback(
+    (pageData: IPageStructure) => {
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: MSG_BUILDER_SYNC_PAGE, page: pageData },
+        chatOrigin
+      );
+    },
+    [chatOrigin]
+  );
+
+  /**
+   * When the panel opens or the page changes while open, push the latest page
+   * into the iframe. The 500 ms debounce covers rapid Puck edits and gives the
+   * iframe time to initialise on first open.
+   */
+  useEffect(() => {
+    if (!open || !page) return;
+    const id = setTimeout(() => sendPageToChat(page), 500);
+    return () => clearTimeout(id);
+  }, [open, page, sendPageToChat]);
+
+  /** Receive page updates produced by the AI chat and surface them to the editor. */
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.origin !== chatOrigin) return;
+      if (event.data?.type !== MSG_CHAT_PAGE_UPDATE) return;
+      const updatedPage = event.data?.page as IPageStructure | undefined;
+      if (updatedPage && typeof updatedPage === "object") {
+        onPageUpdate?.(updatedPage);
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [chatOrigin, onPageUpdate]);
 
   return (
     <>
@@ -44,7 +103,15 @@ export function AiChatIframe() {
           </svg>
         </button>
 
-        {open && <iframe src={`${CHAT_URL}/`} title="Page Builder AI Chat" style={iframeStyle} allow="clipboard-read; clipboard-write" />}
+        {open && (
+          <iframe
+            ref={iframeRef}
+            src={`${CHAT_URL}/`}
+            title="Page Builder AI Chat"
+            style={iframeStyle}
+            allow="clipboard-read; clipboard-write"
+          />
+        )}
       </div>
     </>
   );
