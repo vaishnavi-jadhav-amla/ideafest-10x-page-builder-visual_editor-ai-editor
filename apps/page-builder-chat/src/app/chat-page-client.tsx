@@ -312,18 +312,13 @@ function TypingIndicator() {
 }
 
 function buildWelcome(plainTextEnabled: boolean, openAiReady: boolean, ollamaConfigured: boolean): string {
-  const engines: string[] = [];
-  if (plainTextEnabled) {
-    engines.push("**plain text** (local, no key)");
-  }
-  if (ollamaConfigured) {
-    engines.push("**Ollama** (local LLM)");
-  }
-  if (openAiReady) {
-    engines.push("**OpenAI**");
-  }
-  const engineLine = engines.length > 0 ? `Engines: ${engines.join(", ")}.` : "No chat engines enabled — use **Apply commands** only.";
-  return `Hi. ${engineLine} Try: \`set title My store\` then Send, or type \`help\`. **Apply commands** below still works without any key. See /commands-reference.txt.`;
+  // @chat-page-client-ui.tsx (243-245) above message as welcome message
+  const intro =
+    "Hi! I'm your **Znode Smart Assistant**. I'll help you build pages faster. I can add and configure:\n\n" +
+    "\u2022 Banner Slider\n\u2022 Text Widget\n\u2022 Homepage Banner\n\n" +
+    "What would you like to build today?";
+
+  return `${intro}`;
 }
 
 export function ChatPageClient({ chatPanelEnabled, plainTextEnabled, openAiReady, ollamaConfigured }: ChatPageClientProps) {
