@@ -3,8 +3,9 @@
 import "@measured/puck/puck.css";
 
 import { Puck, type Config, type Data } from "@measured/puck";
-import { useState } from "react";
-import { AiChatButton } from "./ai-chat-button";
+import { useCallback, useState } from "react";
+import { ChatPageClientButton } from "./chat-page-client-button";
+import { INITIAL_PAGE, type PageState } from "./use-chat-engine";
 
 type PuckProps = {
   HeadingBlock: { title: string; level: "h1" | "h2" | "h3" | "h4"; align: "left" | "center" | "right" };
@@ -62,11 +63,7 @@ const config: Config<PuckProps> = {
       render: ({ title, level, align }) => {
         const Tag = level;
         const sizes: Record<string, string> = { h1: "2.5rem", h2: "2rem", h3: "1.5rem", h4: "1.25rem" };
-        return (
-          <Tag style={{ textAlign: align, fontSize: sizes[level], fontWeight: 700, margin: "0.5em 0", color: "black" }}>
-            {title}
-          </Tag>
-        );
+        return <Tag style={{ textAlign: align, fontSize: sizes[level], fontWeight: 700, margin: "0.5em 0", color: "black" }}>{title}</Tag>;
       },
     },
     TextBlock: {
@@ -92,11 +89,7 @@ const config: Config<PuckProps> = {
       defaultProps: { content: "Enter your text here...", align: "left", size: "md" },
       render: ({ content, align, size }) => {
         const fontSizes: Record<string, string> = { sm: "0.875rem", md: "1rem", lg: "1.125rem" };
-        return (
-          <p style={{ textAlign: align, fontSize: fontSizes[size], lineHeight: 1.6, margin: "0.5em 0", color: "black" }}>
-            {content}
-          </p>
-        );
+        return <p style={{ textAlign: align, fontSize: fontSizes[size], lineHeight: 1.6, margin: "0.5em 0", color: "black" }}>{content}</p>;
       },
     },
     ImageBlock: {
@@ -211,9 +204,7 @@ const config: Config<PuckProps> = {
           <img src={imageUrl} alt={title} style={{ width: "100%", height: 180, objectFit: "cover", display: "block" }} />
           <div style={{ padding: 16 }}>
             <h3 style={{ margin: "0 0 8px", fontSize: "1.1rem", fontWeight: 600, color: "black" }}>{title}</h3>
-            <p style={{ margin: 0, fontSize: "0.9rem", color: "rgba(0,0,0,0.6)", lineHeight: 1.5 }}>
-              {description}
-            </p>
+            <p style={{ margin: 0, fontSize: "0.9rem", color: "rgba(0,0,0,0.6)", lineHeight: 1.5 }}>{description}</p>
           </div>
         </div>
       ),
@@ -234,24 +225,52 @@ const config: Config<PuckProps> = {
   },
 };
 
-const INITIAL_DATA: Data = {
-  content: [],
-  root: { props: { title: "" } },
-};
+function pageStateToPuckData(pageState: PageState): Data {
+  return {
+    content: (pageState.data.content ?? []) as Data["content"],
+    root: (pageState.data.root ?? { props: {} }) as Data["root"],
+  };
+}
 
-export default function PuckEditorClient() {
-  const [data] = useState<Data>(INITIAL_DATA);
+export interface PuckEditorClientProps {
+  chatPanelEnabled: boolean;
+  plainTextEnabled: boolean;
+  openAiReady: boolean;
+  ollamaConfigured: boolean;
+}
+
+export default function PuckEditorClient({ chatPanelEnabled, plainTextEnabled, openAiReady, ollamaConfigured }: Readonly<PuckEditorClientProps>) {
+  const [pageState, setPageState] = useState<PageState>(INITIAL_PAGE);
+  const [puckKey, setPuckKey] = useState(0);
+
+  const handleAiPageChange = useCallback((newPage: PageState) => {
+    setPageState(newPage);
+    setPuckKey((k) => k + 1);
+  }, []);
+
+  const handlePuckChange = useCallback((newData: Data) => {
+    setPageState((prev) => ({
+      ...prev,
+      data: {
+        content: newData.content as unknown[],
+        root: newData.root as Record<string, unknown>,
+      },
+    }));
+  }, []);
 
   return (
     <div style={{ background: "white", color: "black", minHeight: "100vh", position: "relative" }}>
       <Puck
+        key={puckKey}
         config={config}
-        data={data}
+        data={pageStateToPuckData(pageState)}
+        onChange={handlePuckChange}
         onPublish={(publishedData) => {
           console.log("Published:", publishedData);
         }}
       />
-      <AiChatButton />
+      {/* <AiChatButton page={pageState} onPageChange={handleAiPageChange} /> */}
+      <ChatPageClientButton chatPanelEnabled={chatPanelEnabled} plainTextEnabled={plainTextEnabled} openAiReady={openAiReady} ollamaConfigured={ollamaConfigured} />
     </div>
   );
 }

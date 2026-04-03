@@ -1,54 +1,53 @@
 "use client";
 
-import { useCallback, useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
-
-type ChatMessage = { role: "user" | "assistant"; content: string };
+import {
+  useChatEngine,
+  type PageState,
+  type BannerSliderChoice,
+  type ProductCarouselUiState,
+} from "./use-chat-engine";
 
 export interface AiChatBotProps {
   open: boolean;
   onClose: () => void;
+  page: PageState;
+  onPageChange: (page: PageState) => void;
 }
 
-export function AiChatBot({ open, onClose }: Readonly<AiChatBotProps>) {
-  const [messages, setMessages] = useState<ChatMessage[]>([{ role: "assistant", content: "Hi! I'm your AI assistant. How can I help you build your page?" }]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+export function AiChatBot({ open, onClose, page, onPageChange }: Readonly<AiChatBotProps>) {
+  const {
+    messages,
+    chatInput,
+    setChatInput,
+    loading,
+    lastError,
+    bannerSliderChoices,
+    productCarousel,
+    publishLoading,
+    sendChat,
+    pickBannerSlider,
+    toggleProductCarouselSku,
+    loadMoreProductCarousel,
+    confirmProductCarousel,
+  } = useChatEngine({
+    page,
+    onPageChange,
+    welcomeMessage:
+      "Hi! I'm your AI assistant. How can I help you build your page?\n\nTry: add banner slider, add products, set title ..., add text ..., or help.",
+  });
+
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = useCallback(async () => {
-    const text = input.trim();
-    if (!text || loading) return;
-
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
-    setInput("");
-    setLoading(true);
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, useCommandsOnly: false }),
-        cache: "no-store",
-      });
-      const data = await res.json();
-      const reply = data.assistantContent || data.error || "No response received.";
-      setMessages((prev) => [...prev, { role: "assistant", content: reply }]);
-    } catch (err) {
-      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${err instanceof Error ? err.message : String(err)}` }]);
-    } finally {
-      setLoading(false);
-    }
-  }, [input, loading]);
-
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      void sendMessage();
+      void sendChat();
     }
   };
 
@@ -64,10 +63,12 @@ export function AiChatBot({ open, onClose }: Readonly<AiChatBotProps>) {
           pointerEvents: open ? "auto" : "none",
         }}
       >
+        {/* Header */}
         <div style={panelHeaderStyle}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={headerDotStyle} />
+            <span style={{ ...headerDotStyle, background: publishLoading ? "#f59e0b" : "#22c55e" }} />
             <span style={{ fontWeight: 600, fontSize: "0.95rem" }}>AI Assistant</span>
+            {publishLoading && <span style={{ fontSize: "0.75rem", color: "#94a3b8" }}>Publishing...</span>}
           </div>
           <button type="button" onClick={onClose} style={closeButtonStyle} aria-label="Close chat">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -77,6 +78,7 @@ export function AiChatBot({ open, onClose }: Readonly<AiChatBotProps>) {
           </button>
         </div>
 
+        {/* Messages */}
         <div style={messagesContainerStyle}>
           {messages.map((msg, i) => (
             <div key={`${msg.role}-${i}-${msg.content.slice(0, 20)}`} style={{ display: "flex", justifyContent: msg.role === "user" ? "flex-end" : "flex-start" }}>
@@ -91,10 +93,34 @@ export function AiChatBot({ open, onClose }: Readonly<AiChatBotProps>) {
           <div ref={bottomRef} />
         </div>
 
+        {/* Error */}
+        {lastError && (
+          <div style={errorBarStyle}>
+            {lastError}
+          </div>
+        )}
+
+        {/* Banner slider choices */}
+        {bannerSliderChoices && bannerSliderChoices.length > 0 && (
+          <BannerSliderSection choices={bannerSliderChoices} loading={loading} onPick={(c) => void pickBannerSlider(c)} />
+        )}
+
+        {/* Product carousel picker */}
+        {productCarousel && (
+          <ProductCarouselSection
+            carousel={productCarousel}
+            loading={loading}
+            onToggleSku={toggleProductCarouselSku}
+            onLoadMore={() => void loadMoreProductCarousel()}
+            onConfirm={() => void confirmProductCarousel()}
+          />
+        )}
+
+        {/* Input */}
         <div style={inputBarStyle}>
           <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask me anything..."
             rows={1}
@@ -103,12 +129,12 @@ export function AiChatBot({ open, onClose }: Readonly<AiChatBotProps>) {
           />
           <button
             type="button"
-            onClick={() => void sendMessage()}
-            disabled={loading || !input.trim()}
+            onClick={() => void sendChat()}
+            disabled={loading || !chatInput.trim()}
             style={{
               ...sendButtonStyle,
-              opacity: loading || !input.trim() ? 0.5 : 1,
-              cursor: loading || !input.trim() ? "default" : "pointer",
+              opacity: loading || !chatInput.trim() ? 0.5 : 1,
+              cursor: loading || !chatInput.trim() ? "default" : "pointer",
             }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -119,6 +145,128 @@ export function AiChatBot({ open, onClose }: Readonly<AiChatBotProps>) {
         </div>
       </div>
     </>
+  );
+}
+
+/* ── Sub-components ──────────────────────────────────── */
+
+function BannerSliderSection({
+  choices,
+  loading,
+  onPick,
+}: Readonly<{
+  choices: BannerSliderChoice[];
+  loading: boolean;
+  onPick: (c: BannerSliderChoice) => void;
+}>) {
+  return (
+    <div style={pickerSectionStyle}>
+      <div style={{ fontWeight: 600, fontSize: "0.8rem", marginBottom: 8, color: "#334155" }}>
+        Banner slider &mdash; choose one
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {choices.map((c, i) => (
+          <button
+            key={`${i}-${c.masterWidgetKey}-${c.cmsSliderId}`}
+            type="button"
+            disabled={loading}
+            onClick={() => onPick(c)}
+            style={{
+              ...chipStyle,
+              borderColor: "#3b82f6",
+              color: "#3b82f6",
+              cursor: loading ? "default" : "pointer",
+              opacity: loading ? 0.6 : 1,
+            }}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProductCarouselSection({
+  carousel,
+  loading,
+  onToggleSku,
+  onLoadMore,
+  onConfirm,
+}: Readonly<{
+  carousel: ProductCarouselUiState;
+  loading: boolean;
+  onToggleSku: (sku: string) => void;
+  onLoadMore: () => void;
+  onConfirm: () => void;
+}>) {
+  return (
+    <div style={{ ...pickerSectionStyle, maxHeight: 220, overflowY: "auto" }}>
+      <div style={{ fontWeight: 600, fontSize: "0.8rem", marginBottom: 8, color: "#334155" }}>
+        Products carousel &mdash; select products
+      </div>
+      {carousel.products.length === 0 ? (
+        <div style={{ color: "#94a3b8", fontSize: "0.8rem" }}>No unassociated products for this widget key.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {carousel.products.map((p) => (
+            <label
+              key={p.sku}
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                gap: 8,
+                cursor: loading ? "default" : "pointer",
+                fontSize: "0.82rem",
+              }}
+            >
+              <input
+                type="checkbox"
+                disabled={loading}
+                checked={carousel.selectedSkus.includes(p.sku)}
+                onChange={() => onToggleSku(p.sku)}
+                style={{ marginTop: 2 }}
+              />
+              <span>
+                {p.name}
+                <span style={{ display: "block", fontSize: "0.7rem", color: "#94a3b8" }}>{p.sku}</span>
+              </span>
+            </label>
+          ))}
+        </div>
+      )}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+        <button
+          type="button"
+          disabled={loading || !carousel.hasMore}
+          onClick={onLoadMore}
+          style={{
+            ...chipStyle,
+            borderColor: "#3b82f6",
+            cursor: loading || !carousel.hasMore ? "default" : "pointer",
+            opacity: loading || !carousel.hasMore ? 0.5 : 1,
+          }}
+        >
+          Show more
+        </button>
+        <button
+          type="button"
+          disabled={loading || carousel.selectedSkus.length === 0}
+          onClick={onConfirm}
+          style={{
+            ...chipStyle,
+            background: "#3b82f6",
+            color: "#fff",
+            border: "none",
+            fontWeight: 600,
+            cursor: loading || carousel.selectedSkus.length === 0 ? "default" : "pointer",
+            opacity: loading || carousel.selectedSkus.length === 0 ? 0.5 : 1,
+          }}
+        >
+          Add carousel ({carousel.selectedSkus.length})
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -140,8 +288,8 @@ const panelStyle: CSSProperties = {
   right: 0,
   width: 420,
   maxWidth: "100vw",
-  height: "60vh",
-  maxHeight: 600,
+  height: "70vh",
+  maxHeight: 700,
   background: "#fff",
   borderTopLeftRadius: 16,
   borderTopRightRadius: 0,
@@ -213,6 +361,14 @@ const assistantBubbleStyle: CSSProperties = {
   borderBottomLeftRadius: 4,
 };
 
+const errorBarStyle: CSSProperties = {
+  padding: "8px 16px",
+  color: "#f87171",
+  fontSize: "0.8rem",
+  borderTop: "1px solid #fecaca",
+  background: "#fef2f2",
+};
+
 const inputBarStyle: CSSProperties = {
   display: "flex",
   alignItems: "flex-end",
@@ -247,4 +403,19 @@ const sendButtonStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   flexShrink: 0,
+};
+
+const pickerSectionStyle: CSSProperties = {
+  padding: "10px 16px",
+  borderTop: "1px solid #e5e7eb",
+  background: "#f8fafc",
+};
+
+const chipStyle: CSSProperties = {
+  padding: "5px 10px",
+  borderRadius: 8,
+  border: "1px solid #d1d5db",
+  background: "#fff",
+  fontSize: "0.78rem",
+  cursor: "pointer",
 };

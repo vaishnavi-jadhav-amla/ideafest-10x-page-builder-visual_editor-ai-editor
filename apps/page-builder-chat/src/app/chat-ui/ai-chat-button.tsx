@@ -3,8 +3,14 @@
 import { useState } from "react";
 import type { CSSProperties } from "react";
 import { AiChatBot } from "./ai-chat-overlay";
+import type { PageState } from "./use-chat-engine";
 
-export function AiChatButton() {
+export interface AiChatButtonProps {
+  page: PageState;
+  onPageChange: (page: PageState) => void;
+}
+
+export function AiChatButton({ page, onPageChange }: Readonly<AiChatButtonProps>) {
   const [chatOpen, setChatOpen] = useState(false);
 
   return (
@@ -23,7 +29,7 @@ export function AiChatButton() {
         </svg>
       </button>
 
-      <AiChatBot open={chatOpen} onClose={() => setChatOpen(false)} />
+      <AiChatBot open={chatOpen} onClose={() => setChatOpen(false)} page={page} onPageChange={onPageChange} />
     </>
   );
 }
