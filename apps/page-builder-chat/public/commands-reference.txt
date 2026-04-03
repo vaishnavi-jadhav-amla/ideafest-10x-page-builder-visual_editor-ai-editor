@@ -1,6 +1,6 @@
 Page builder chat — command reference
 =====================================
-
+s
 PLAIN TEXT CHAT (no API key)
 ----------------------------
 In the **Chat** box you can send lines like (see packages/agents/.../plain-text-commands.ts):
