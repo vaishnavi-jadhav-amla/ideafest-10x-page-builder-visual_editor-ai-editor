@@ -800,7 +800,7 @@ export function ChatPageClient({ chatPanelEnabled, plainTextEnabled, openAiReady
         <div style={styles.headerLeft}>
           <ZnodeLogo size={40} />
           <div>
-            <div style={styles.headerTitle}>Znode Smart Assistant girish</div>
+            <div style={styles.headerTitle}>Znode Smart Assistant</div>
           </div>
         </div>
         <div style={styles.headerActions} />
