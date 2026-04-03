@@ -2,7 +2,7 @@
 
 import type { Data } from "@measured/puck";
 import { PageEditor } from "@znode/page-builder";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { setPage } from "@znode/page-builder/utils/set-page";
 import { SessionProvider } from "next-auth/react";
 import { OverlayLoader } from "@znode/base-components/common/loader-component";
@@ -37,6 +37,15 @@ function Client(props: Readonly<IClientProps>) {
   const [editorKey, setEditorKey] = useState(0);
 
   /**
+   * When the AI chat pushes a page update, Puck remounts (editorKey bump) and its
+   * onChange fires immediately, broadcasting a NOTIFY_VISUAL_EDITOR_CHANGES message.
+   * Without this guard the handler would call setCurrentPageStructure again (echo),
+   * which triggers AiChatIframe to re-sync the page back to the chat iframe —
+   * causing visible flickering / multiple re-renders.
+   */
+  const chatUpdateInProgressRef = useRef(false);
+
+  /**
    * PageEditor broadcasts every Puck change to window.parent via postMessage
    * (category: "notify_visual_editor_changes"). In standalone mode window.parent
    * === window, so the event lands here. We capture it to keep currentPageStructure
@@ -45,6 +54,8 @@ function Client(props: Readonly<IClientProps>) {
   useEffect(() => {
     function handleEditorChange(event: MessageEvent) {
       if (event.data?.category !== NOTIFY_VISUAL_EDITOR_CHANGES) return;
+      // Skip the echo event that fires when Puck remounts after a chat-initiated update.
+      if (chatUpdateInProgressRef.current) return;
       const pageJson = event.data?.data?.pageJson as IPageStructure | undefined;
       if (pageJson && typeof pageJson === "object") {
         setCurrentPageStructure(pageJson);
@@ -60,8 +71,14 @@ function Client(props: Readonly<IClientProps>) {
    * the `data` prop in Puck is used only as initial state.
    */
   const handlePageUpdateFromChat = useCallback((updatedPage: IPageStructure) => {
+    chatUpdateInProgressRef.current = true;
     setCurrentPageStructure(updatedPage);
     setEditorKey((k) => k + 1);
+    // Allow enough time for Puck to remount and fire its initial onChange before
+    // resuming normal NOTIFY_VISUAL_EDITOR_CHANGES processing.
+    setTimeout(() => {
+      chatUpdateInProgressRef.current = false;
+    }, 1000);
   }, []);
 
   // Prevent scroll events from changing input[type="number"] values
