@@ -1,0 +1,679 @@
+{
+  "description": "Etna Supply wholesale plumbing supply homepage with banner slider, intro heading/text, account CTA buttons, industries we serve image cards, Etna Supply Advantage section with 3 icon columns, featured categories carousel, video + text split section, featured products carousel, and trusted brands link panel.",
+  "data": {
+    "content": [
+      {
+        "type": "Container",
+        "props": {
+          "align": "center",
+          "block": "box",
+          "maxWidth": 1200,
+          "margin": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+          "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+          "border": {"width": "0", "color": "black", "style": "solid", "borderRadius": 0},
+          "height": "auto",
+          "image": {"src": "", "backgroundSize": "cover", "backgroundPosition": "center", "backgroundRepeat": "no-repeat", "backgroundColor": ""},
+          "id": "Container-001",
+          "layout": "custom",
+          "flexProperties": {"flexDirection": "column", "rowAlignment": {}, "columnAlignment": {}, "flexWrap": "nowrap"},
+          "rigidView": "no"
+        }
+      }
+    ],
+    "root": {"props": {}},
+    "zones": {
+      "Container-001:Container": [
+        {
+          "type": "BannerSlider",
+          "props": {
+            "axis": "horizontal",
+            "showThumbs": false,
+            "showArrows": true,
+            "infiniteLoop": true,
+            "interval": 3000,
+            "transitionTime": 500,
+            "showIndicators": true,
+            "autoPlay": true,
+            "config": {
+              "type": "Widget",
+              "id": "BannerSliderWidget",
+              "hasConfigurable": true,
+              "widgetConfig": {
+                "masterWidgetKey": "555",
+                "widgetKey": "555",
+                "widgetCode": "BannerSlider",
+                "displayName": "Banner Slider"
+              }
+            },
+            "id": "BannerSlider-001"
+          }
+        },
+        {
+          "type": "VerticalSpacing",
+          "props": {"size": "24px", "id": "VerticalSpacing-001"}
+        },
+        {
+          "type": "Heading",
+          "props": {
+            "align": "left",
+            "text": "Your Trusted Partner for Wholesale Plumbing Supplies, HVAC, Municipal & More",
+            "margin": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "border": {"width": "0", "color": "black", "style": "solid", "borderRadius": 0},
+            "size": "xl",
+            "background": "transparent",
+            "textColor": "black",
+            "id": "Heading-001",
+            "level": "2"
+          }
+        },
+        {
+          "type": "Text",
+          "props": {
+            "align": "left",
+            "text": "At Etna Supply, we're committed to being more than just a supplier—we're your reliable partner for every project. With over 30 years of industry expertise and an expansive inventory of 90,000+ products, we deliver the solutions you need with the service you trust.",
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "size": "s",
+            "weight": "normal",
+            "color": "default",
+            "id": "Text-001"
+          }
+        },
+        {
+          "type": "VerticalSpacing",
+          "props": {"size": "16px", "id": "VerticalSpacing-002"}
+        },
+        {
+          "type": "Heading",
+          "props": {
+            "align": "center",
+            "text": "Existing etnasupply.com Customer?",
+            "margin": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "border": {"width": "0", "color": "black", "style": "solid", "borderRadius": 0},
+            "size": "s",
+            "background": "transparent",
+            "textColor": "black",
+            "id": "Heading-002",
+            "level": "4"
+          }
+        },
+        {
+          "type": "ButtonGroup",
+          "props": {
+            "buttons": [
+              {"label": "Activate your Account", "href": "/account/activate", "variant": "primary", "target": "_self"},
+              {"label": "Create a NEW Account", "href": "/account/create", "variant": "secondary", "target": "_self"}
+            ],
+            "id": "ButtonGroup-001"
+          }
+        },
+        {
+          "type": "VerticalSpacing",
+          "props": {"size": "32px", "id": "VerticalSpacing-003"}
+        },
+        {
+          "type": "Heading",
+          "props": {
+            "align": "left",
+            "text": "Industries We Serve",
+            "margin": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "border": {"width": "0", "color": "black", "style": "solid", "borderRadius": 0},
+            "size": "xl",
+            "background": "transparent",
+            "textColor": "black",
+            "id": "Heading-003",
+            "level": "2"
+          }
+        },
+        {
+          "type": "VerticalSpacing",
+          "props": {"size": "12px", "id": "VerticalSpacing-004"}
+        },
+        {
+          "type": "Column",
+          "props": {
+            "distribution": "auto",
+            "columns": [{}, {}, {}, {}, {}],
+            "gap": 8,
+            "margin": {"top": 0, "right": 0, "bottom": 0, "left": 0},
+            "hasDropZoneDisabled": false,
+            "id": "Column-001"
+          }
+        },
+        {
+          "type": "VerticalSpacing",
+          "props": {"size": "32px", "id": "VerticalSpacing-005"}
+        },
+        {
+          "type": "Heading",
+          "props": {
+            "align": "left",
+            "text": "The Etna Supply Advantage",
+            "margin": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "border": {"width": "0", "color": "black", "style": "solid", "borderRadius": 0},
+            "size": "xl",
+            "background": "transparent",
+            "textColor": "black",
+            "id": "Heading-004",
+            "level": "2"
+          }
+        },
+        {
+          "type": "Text",
+          "props": {
+            "align": "left",
+            "text": "We believe in providing more than products—we deliver expertise, personalized service, and long-term partnerships. Our commitment to excellence is built on strong values, expert guidance, and a genuine desire to make your projects run smoothly. Here's how we stand apart:",
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "size": "s",
+            "weight": "normal",
+            "color": "default",
+            "id": "Text-002"
+          }
+        },
+        {
+          "type": "VerticalSpacing",
+          "props": {"size": "24px", "id": "VerticalSpacing-006"}
+        },
+        {
+          "type": "Column",
+          "props": {
+            "distribution": "auto",
+            "columns": [{}, {}, {}],
+            "gap": 24,
+            "margin": {"top": 0, "right": 0, "bottom": 0, "left": 0},
+            "hasDropZoneDisabled": false,
+            "id": "Column-002"
+          }
+        },
+        {
+          "type": "VerticalSpacing",
+          "props": {"size": "32px", "id": "VerticalSpacing-007"}
+        },
+        {
+          "type": "Heading",
+          "props": {
+            "align": "center",
+            "text": "Featured Categories",
+            "margin": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "border": {"width": "0", "color": "black", "style": "solid", "borderRadius": 0},
+            "size": "xl",
+            "background": "transparent",
+            "textColor": "#6d0020",
+            "id": "Heading-005",
+            "level": "2"
+          }
+        },
+        {
+          "type": "CategoriesCarousel",
+          "props": {
+            "spaceBetween": 10,
+            "slidesPerView": 6,
+            "hasNavigationEnable": true,
+            "hasPaginationEnable": true,
+            "hasGrid": false,
+            "config": {
+              "type": "Widget",
+              "id": "CategoriesWidget",
+              "hasConfigurable": true,
+              "widgetConfig": {
+                "masterWidgetKey": "1992",
+                "widgetKey": "1992",
+                "widgetCode": "CategoryList",
+                "displayName": "Category List"
+              }
+            },
+            "id": "CategoriesCarousel-001"
+          }
+        },
+        {
+          "type": "VerticalSpacing",
+          "props": {"size": "32px", "id": "VerticalSpacing-008"}
+        },
+        {
+          "type": "Column",
+          "props": {
+            "distribution": "manual",
+            "columns": [{"span": 5}, {"span": 7}],
+            "gap": 24,
+            "margin": {"top": 0, "right": 0, "bottom": 0, "left": 0},
+            "hasDropZoneDisabled": false,
+            "id": "Column-003"
+          }
+        },
+        {
+          "type": "VerticalSpacing",
+          "props": {"size": "32px", "id": "VerticalSpacing-009"}
+        },
+        {
+          "type": "Heading",
+          "props": {
+            "align": "center",
+            "text": "Featured Products",
+            "margin": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "border": {"width": "0", "color": "black", "style": "solid", "borderRadius": 0},
+            "size": "xl",
+            "background": "transparent",
+            "textColor": "#6d0020",
+            "id": "Heading-006",
+            "level": "2"
+          }
+        },
+        {
+          "type": "ProductsCarousel",
+          "props": {
+            "spaceBetween": 10,
+            "slidesPerView": 4,
+            "hasNavigationEnable": true,
+            "hasPaginationEnable": true,
+            "hasGrid": false,
+            "config": {
+              "type": "Widget",
+              "id": "ProductsCarouselWidget",
+              "hasConfigurable": true,
+              "widgetConfig": {
+                "masterWidgetKey": "666",
+                "widgetKey": "666",
+                "widgetCode": "ProductList",
+                "displayName": "Product List"
+              }
+            },
+            "id": "ProductsCarousel-001"
+          }
+        },
+        {
+          "type": "VerticalSpacing",
+          "props": {"size": "32px", "id": "VerticalSpacing-010"}
+        },
+        {
+          "type": "Heading",
+          "props": {
+            "align": "left",
+            "text": "Trusted Brands",
+            "margin": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "border": {"width": "0", "color": "black", "style": "solid", "borderRadius": 0},
+            "size": "xl",
+            "background": "transparent",
+            "textColor": "black",
+            "id": "Heading-007",
+            "level": "2"
+          }
+        },
+        {
+          "type": "LinkPanel",
+          "props": {
+            "contentOrientation": "horizontal",
+            "customClass": "homepagebrands",
+            "config": {
+              "type": "Widget",
+              "id": "LinkPanelWidget",
+              "hasConfigurable": true,
+              "widgetConfig": {
+                "masterWidgetKey": "2253",
+                "widgetKey": "2253",
+                "widgetCode": "LinkPanel",
+                "displayName": "Link Panel"
+              }
+            },
+            "id": "LinkPanel-001"
+          }
+        },
+        {
+          "type": "VerticalSpacing",
+          "props": {"size": "48px", "id": "VerticalSpacing-011"}
+        }
+      ],
+      "Column-001:column-0": [
+        {
+          "type": "Image",
+          "props": {
+            "image": "/_next/static/media/no-image.610b4c69.png",
+            "alt": "Plumbing / Fire Protection / HVAC",
+            "url": "",
+            "layout": "responsive",
+            "height": 150,
+            "width": 200,
+            "alignment": "center",
+            "borderRadius": "0px",
+            "target": "_self",
+            "id": "Image-001",
+            "locale": {"en-US": {"image": "/_next/static/media/no-image.610b4c69.png", "alt": "Plumbing / Fire Protection / HVAC"}},
+            "readOnly": {"width": false, "height": false, "alignment": false}
+          }
+        },
+        {
+          "type": "Text",
+          "props": {
+            "align": "center",
+            "text": "Plumbing | Fire Protection | HVAC",
+            "padding": {"top": "4", "right": "0", "bottom": "4", "left": "0"},
+            "size": "s",
+            "weight": "normal",
+            "color": "default",
+            "id": "Text-003"
+          }
+        }
+      ],
+      "Column-001:column-1": [
+        {
+          "type": "Image",
+          "props": {
+            "image": "/_next/static/media/no-image.610b4c69.png",
+            "alt": "Boiler | Radiant | Green Systems",
+            "url": "",
+            "layout": "responsive",
+            "height": 150,
+            "width": 200,
+            "alignment": "center",
+            "borderRadius": "0px",
+            "target": "_self",
+            "id": "Image-002",
+            "locale": {"en-US": {"image": "/_next/static/media/no-image.610b4c69.png", "alt": "Boiler | Radiant | Green Systems"}},
+            "readOnly": {"width": false, "height": false, "alignment": false}
+          }
+        },
+        {
+          "type": "Text",
+          "props": {
+            "align": "center",
+            "text": "Boiler | Radiant | Green Systems",
+            "padding": {"top": "4", "right": "0", "bottom": "4", "left": "0"},
+            "size": "s",
+            "weight": "normal",
+            "color": "default",
+            "id": "Text-004"
+          }
+        }
+      ],
+      "Column-001:column-2": [
+        {
+          "type": "Image",
+          "props": {
+            "image": "/_next/static/media/no-image.610b4c69.png",
+            "alt": "Green Systems | Builders | Remodelers | An Answers Channel",
+            "url": "",
+            "layout": "responsive",
+            "height": 150,
+            "width": 200,
+            "alignment": "center",
+            "borderRadius": "0px",
+            "target": "_self",
+            "id": "Image-003",
+            "locale": {"en-US": {"image": "/_next/static/media/no-image.610b4c69.png", "alt": "Green Systems"}},
+            "readOnly": {"width": false, "height": false, "alignment": false}
+          }
+        },
+        {
+          "type": "Text",
+          "props": {
+            "align": "center",
+            "text": "Green Systems | Builders | Remodelers",
+            "padding": {"top": "4", "right": "0", "bottom": "4", "left": "0"},
+            "size": "s",
+            "weight": "normal",
+            "color": "default",
+            "id": "Text-005"
+          }
+        }
+      ],
+      "Column-001:column-3": [
+        {
+          "type": "Image",
+          "props": {
+            "image": "/_next/static/media/no-image.610b4c69.png",
+            "alt": "Municipal | Water & Sewer | Government",
+            "url": "",
+            "layout": "responsive",
+            "height": 150,
+            "width": 200,
+            "alignment": "center",
+            "borderRadius": "0px",
+            "target": "_self",
+            "id": "Image-004",
+            "locale": {"en-US": {"image": "/_next/static/media/no-image.610b4c69.png", "alt": "Municipal | Water & Sewer | Government"}},
+            "readOnly": {"width": false, "height": false, "alignment": false}
+          }
+        },
+        {
+          "type": "Text",
+          "props": {
+            "align": "center",
+            "text": "Municipal | Water & Sewer | Government",
+            "padding": {"top": "4", "right": "0", "bottom": "4", "left": "0"},
+            "size": "s",
+            "weight": "normal",
+            "color": "default",
+            "id": "Text-006"
+          }
+        }
+      ],
+      "Column-001:column-4": [
+        {
+          "type": "Image",
+          "props": {
+            "image": "/_next/static/media/no-image.610b4c69.png",
+            "alt": "Wholesale | Pipe & Fittings | Plumbing, Valves & Fittings",
+            "url": "",
+            "layout": "responsive",
+            "height": 150,
+            "width": 200,
+            "alignment": "center",
+            "borderRadius": "0px",
+            "target": "_self",
+            "id": "Image-005",
+            "locale": {"en-US": {"image": "/_next/static/media/no-image.610b4c69.png", "alt": "Wholesale | Pipe & Fittings"}},
+            "readOnly": {"width": false, "height": false, "alignment": false}
+          }
+        },
+        {
+          "type": "Text",
+          "props": {
+            "align": "center",
+            "text": "Wholesale | Pipe & Fittings | Plumbing, Valves & Fittings",
+            "padding": {"top": "4", "right": "0", "bottom": "4", "left": "0"},
+            "size": "s",
+            "weight": "normal",
+            "color": "default",
+            "id": "Text-007"
+          }
+        }
+      ],
+      "Column-002:column-0": [
+        {
+          "type": "Image",
+          "props": {
+            "image": "/_next/static/media/no-image.610b4c69.png",
+            "alt": "We Know Our Stuff Icon",
+            "url": "",
+            "layout": "fixed",
+            "height": 80,
+            "width": 80,
+            "alignment": "center",
+            "borderRadius": "50px",
+            "target": "_self",
+            "id": "Image-006",
+            "locale": {"en-US": {"image": "/_next/static/media/no-image.610b4c69.png", "alt": "We Know Our Stuff Icon"}},
+            "readOnly": {"width": false, "height": false, "alignment": false}
+          }
+        },
+        {
+          "type": "Heading",
+          "props": {
+            "align": "center",
+            "text": "We Know Our Stuff—and We Keep It Simple",
+            "margin": {"top": "8", "right": "0", "bottom": "0", "left": "0"},
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "border": {"width": "0", "color": "black", "style": "solid", "borderRadius": 0},
+            "size": "m",
+            "background": "transparent",
+            "textColor": "#6d0020",
+            "id": "Heading-008",
+            "level": "3"
+          }
+        },
+        {
+          "type": "Text",
+          "props": {
+            "align": "center",
+            "text": "With decades of industry expertise, our team delivers clear, practical guidance on plumbing, HVAC, fire protection, and municipal solutions. We will break down complex topics into straightforward, actionable advice.",
+            "padding": {"top": "8", "right": "0", "bottom": "0", "left": "0"},
+            "size": "s",
+            "weight": "normal",
+            "color": "default",
+            "id": "Text-008"
+          }
+        }
+      ],
+      "Column-002:column-1": [
+        {
+          "type": "Image",
+          "props": {
+            "image": "/_next/static/media/no-image.610b4c69.png",
+            "alt": "We Move Fast Icon",
+            "url": "",
+            "layout": "fixed",
+            "height": 80,
+            "width": 80,
+            "alignment": "center",
+            "borderRadius": "50px",
+            "target": "_self",
+            "id": "Image-007",
+            "locale": {"en-US": {"image": "/_next/static/media/no-image.610b4c69.png", "alt": "We Move Fast Icon"}},
+            "readOnly": {"width": false, "height": false, "alignment": false}
+          }
+        },
+        {
+          "type": "Heading",
+          "props": {
+            "align": "center",
+            "text": "We Move Fast Without Cutting Corners",
+            "margin": {"top": "8", "right": "0", "bottom": "0", "left": "0"},
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "border": {"width": "0", "color": "black", "style": "solid", "borderRadius": 0},
+            "size": "m",
+            "background": "transparent",
+            "textColor": "#6d0020",
+            "id": "Heading-009",
+            "level": "3"
+          }
+        },
+        {
+          "type": "Text",
+          "props": {
+            "align": "center",
+            "text": "Time is money, and we value both. From rapid quotes to on-time deliveries, we work efficiently to ensure every order is complete and accurate, keeping your project on schedule without sacrificing quality.",
+            "padding": {"top": "8", "right": "0", "bottom": "0", "left": "0"},
+            "size": "s",
+            "weight": "normal",
+            "color": "default",
+            "id": "Text-009"
+          }
+        }
+      ],
+      "Column-002:column-2": [
+        {
+          "type": "Image",
+          "props": {
+            "image": "/_next/static/media/no-image.610b4c69.png",
+            "alt": "We Build Partnerships Icon",
+            "url": "",
+            "layout": "fixed",
+            "height": 80,
+            "width": 80,
+            "alignment": "center",
+            "borderRadius": "50px",
+            "target": "_self",
+            "id": "Image-008",
+            "locale": {"en-US": {"image": "/_next/static/media/no-image.610b4c69.png", "alt": "We Build Partnerships Icon"}},
+            "readOnly": {"width": false, "height": false, "alignment": false}
+          }
+        },
+        {
+          "type": "Heading",
+          "props": {
+            "align": "center",
+            "text": "We Build Partnerships, Not Just Process Orders",
+            "margin": {"top": "8", "right": "0", "bottom": "0", "left": "0"},
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "border": {"width": "0", "color": "black", "style": "solid", "borderRadius": 0},
+            "size": "m",
+            "background": "transparent",
+            "textColor": "#6d0020",
+            "id": "Heading-010",
+            "level": "3"
+          }
+        },
+        {
+          "type": "Text",
+          "props": {
+            "align": "center",
+            "text": "At Etna Supply, you're more than just a customer—you're a long-term partner. We take the time to understand your business, anticipate your needs, and deliver personalized support for decades.",
+            "padding": {"top": "8", "right": "0", "bottom": "0", "left": "0"},
+            "size": "s",
+            "weight": "normal",
+            "color": "default",
+            "id": "Text-010"
+          }
+        }
+      ],
+      "Column-003:column-0": [
+        {
+          "type": "Video",
+          "props": {
+            "video": "/_next/static/media/no-image.610b4c69.png",
+            "autoPlay": false,
+            "controlEnable": true,
+            "id": "Video-001",
+            "locale": {"en-US": {"video": "/_next/static/media/no-image.610b4c69.png"}}
+          }
+        }
+      ],
+      "Column-003:column-1": [
+        {
+          "type": "Heading",
+          "props": {
+            "align": "left",
+            "text": "Let Etna Be Your Local Partner for Success",
+            "margin": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "padding": {"top": "0", "right": "0", "bottom": "0", "left": "0"},
+            "border": {"width": "0", "color": "black", "style": "solid", "borderRadius": 0},
+            "size": "l",
+            "background": "transparent",
+            "textColor": "black",
+            "id": "Heading-011",
+            "level": "3"
+          }
+        },
+        {
+          "type": "Text",
+          "props": {
+            "align": "left",
+            "text": "Make Etna Supply part of your everyday workflow. Visit one of our showrooms to speak with a friendly, knowledgeable expert. Whether you're managing large plumbing supply projects or working on water HVAC tasks, we're here to simplify your day and make your life easier. We're here to help you deliver exceptional results for your customers with reliable products and expert advice you can count on.",
+            "padding": {"top": "12", "right": "0", "bottom": "0", "left": "0"},
+            "size": "s",
+            "weight": "normal",
+            "color": "default",
+            "id": "Text-011"
+          }
+        }
+      ]
+    }
+  },
+  "widgets": [
+    {"widgetKey": "555", "type": "BannerSlider"},
+    {"widgetKey": "1992", "type": "CategoryList"},
+    {"widgetKey": "666", "type": "ProductList"},
+    {"widgetKey": "2253", "type": "LinkPanel"}
+  ],
+  "cmsWidgetSuggestions": [
+    {"componentType": "BannerSlider", "reason": "Hero banner slider at the top of the page with title, subtitle, and CTA button"},
+    {"componentType": "CategoriesCarousel", "reason": "Featured Categories carousel showing Water Heaters, Plumbing, Metering, Hydronics, PVF, Water Filter Tools"},
+    {"componentType": "ProductsCarousel", "reason": "Featured Products carousel showing product cards with names and pricing info"},
+    {"componentType": "LinkPanel", "reason": "Trusted Brands horizontal logo link panel at the bottom (Kohler, Delta, Elkay, Viega, Victaulic, Milwaukee, Lochinvar)"}
+  ]
+}

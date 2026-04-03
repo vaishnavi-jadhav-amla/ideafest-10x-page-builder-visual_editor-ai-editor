@@ -82,16 +82,18 @@ export function FlexRender({
   };
 
   const getBackgroundStyles = () => {
+    const styles: React.CSSProperties = {};
     if (image.src) {
-      return {
-        backgroundImage: `url(${image.src})`,
-        backgroundSize: image.backgroundSize ? image.backgroundSize : undefined,
-        backgroundPosition: image.backgroundPosition !== "center" ? image.backgroundPosition : undefined,
-        backgroundRepeat: image.backgroundRepeat !== "repeat" ? image.backgroundRepeat : undefined,
-        backgroundClip: "padding-box",
-      };
+      styles.backgroundImage = `url(${image.src})`;
+      styles.backgroundSize = image.backgroundSize ? image.backgroundSize : undefined;
+      styles.backgroundPosition = image.backgroundPosition !== "center" ? image.backgroundPosition : undefined;
+      styles.backgroundRepeat = image.backgroundRepeat !== "repeat" ? image.backgroundRepeat : undefined;
+      styles.backgroundClip = "padding-box";
     }
-    return {};
+    if (image.backgroundColor) {
+      styles.backgroundColor = image.backgroundColor;
+    }
+    return styles;
   };
 
   // Prepare final style

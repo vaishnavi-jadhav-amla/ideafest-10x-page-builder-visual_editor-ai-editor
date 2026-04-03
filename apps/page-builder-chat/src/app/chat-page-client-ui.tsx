@@ -252,8 +252,10 @@ export function ChatPageClientUI({ chatPanelEnabled, plainTextEnabled, openAiRea
   const [bannerSliderChoices, setBannerSliderChoices] = useState<BannerSliderChoice[] | null>(null);
   const [bannerSliderUpdateComponentId, setBannerSliderUpdateComponentId] = useState<string | null>(null);
   const [productCarousel, setProductCarousel] = useState<ProductCarouselUiState | null>(null);
+  const [selectedImage, setSelectedImage] = useState<{ base64: string; mimeType: string; name: string } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -262,6 +264,84 @@ export function ChatPageClientUI({ chatPanelEnabled, plainTextEnabled, openAiRea
   const pushAssistant = useCallback((content: string) => {
     setMessages((m) => [...m, { role: "assistant", content }]);
   }, []);
+
+  const handleImageSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      setLastError("Unsupported image type. Use PNG, JPEG, GIF, or WebP.");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setLastError("Image too large (max 20 MB).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.split(",")[1] ?? "";
+      setSelectedImage({ base64, mimeType: file.type, name: file.name });
+      setLastError(null);
+    };
+    reader.onerror = () => setLastError("Failed to read image file.");
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }, []);
+
+  const sendImageForAnalysis = useCallback(async () => {
+    if (!selectedImage || loading) return;
+    setLastError(null);
+    setBannerSliderChoices(null);
+    setBannerSliderUpdateComponentId(null);
+    setProductCarousel(null);
+    const userMsg = chatInput.trim();
+    setMessages((m) => [
+      ...m,
+      { role: "user", content: `[image] ${selectedImage.name}${userMsg ? `\n${userMsg}` : ""}` },
+    ]);
+    setChatInput("");
+    setLoading(true);
+    const imgPayload = selectedImage;
+    setSelectedImage(null);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          page,
+          imageBase64: imgPayload.base64,
+          imageMimeType: imgPayload.mimeType,
+          message: userMsg || undefined,
+        }),
+        cache: "no-store",
+      });
+      const data = (await res.json()) as ChatApiJson;
+      if (!res.ok) {
+        setLastError(data.error ?? res.statusText);
+        pushAssistant(`Error: ${data.error ?? res.statusText}`);
+        return;
+      }
+      const nextPage = pageFromApiPayload(data.page);
+      if (nextPage !== null) setPage(nextPage);
+      const appliedNdjson = commandsToNdjson(data.toolArgumentsParsed?.[0]?.commands);
+      if (appliedNdjson) setCommandsInput(appliedNdjson);
+      if (data.bannerSliderChoices?.length) {
+        setBannerSliderChoices(data.bannerSliderChoices);
+        setBannerSliderUpdateComponentId(data.bannerSliderUpdateComponentId ?? null);
+      }
+      if (data.productCarouselPicker) {
+        setProductCarousel((prev) => mergeProductCarouselPicker(prev, data.productCarouselPicker!));
+      }
+      pushAssistant(formatChatAssistantReply(data.assistantContent, data.applied, data.errors));
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setLastError(msg);
+      pushAssistant(`Request failed: ${msg}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedImage, loading, chatInput, page, pushAssistant]);
 
   const publishToPreview = useCallback(async () => {
     setPublishLoading(true);
@@ -632,27 +712,86 @@ export function ChatPageClientUI({ chatPanelEnabled, plainTextEnabled, openAiRea
       {/* ── Input area ─────────────────────────────── */}
       {chatPanelEnabled ? (
         <div style={styles.inputArea}>
+          {selectedImage && (
+            <div style={styles.imagePreview}>
+              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                Image: <strong>{selectedImage.name}</strong>
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedImage(null)}
+                style={styles.imagePreviewRemove}
+              >
+                Remove
+              </button>
+              <button
+                type="button"
+                onClick={() => void sendImageForAnalysis()}
+                disabled={loading}
+                style={{
+                  ...styles.imagePreviewAnalyze,
+                  cursor: loading ? "wait" : "pointer",
+                }}
+              >
+                {loading ? "Analyzing\u2026" : "Analyze image"}
+              </button>
+            </div>
+          )}
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/gif,image/webp"
+            onChange={handleImageSelect}
+            style={{ display: "none" }}
+          />
           <div style={styles.inputRow}>
             <input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder="Type your message..."
+              placeholder={selectedImage ? "Describe what to build from this image\u2026" : "Type your message..."}
               style={styles.textInput}
               disabled={loading}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  void sendChat();
+                  if (selectedImage) {
+                    void sendImageForAnalysis();
+                  } else {
+                    void sendChat();
+                  }
                 }
               }}
             />
             <button
               type="button"
-              onClick={() => void sendChat()}
-              disabled={loading || !chatInput.trim()}
+              onClick={() => imageInputRef.current?.click()}
+              disabled={loading}
+              title="Upload page screenshot for AI analysis"
+              style={{
+                ...styles.imageBtn,
+                opacity: loading ? 0.5 : 1,
+                cursor: loading ? "default" : "pointer",
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <circle cx="8.5" cy="8.5" r="1.5" />
+                <polyline points="21 15 16 10 5 21" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (selectedImage) {
+                  void sendImageForAnalysis();
+                } else {
+                  void sendChat();
+                }
+              }}
+              disabled={loading || (!chatInput.trim() && !selectedImage)}
               style={{
                 ...styles.sendBtn,
-                opacity: loading || !chatInput.trim() ? 0.5 : 1,
+                opacity: loading || (!chatInput.trim() && !selectedImage) ? 0.5 : 1,
                 cursor: loading ? "wait" : "pointer",
               }}
             >
@@ -918,6 +1057,50 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    flexShrink: 0,
+  },
+  imageBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: "50%",
+    border: "1.5px solid var(--border)",
+    background: "#fff",
+    color: "var(--muted)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    transition: "border-color 0.15s, color 0.15s",
+  },
+  imagePreview: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+    padding: "6px 12px",
+    borderRadius: 10,
+    border: "1.5px solid var(--accent)",
+    background: "#f0fdf4",
+    fontSize: "0.82rem",
+  },
+  imagePreviewRemove: {
+    padding: "2px 8px",
+    borderRadius: 6,
+    border: "1px solid var(--border)",
+    background: "transparent",
+    color: "var(--text)",
+    cursor: "pointer",
+    fontSize: "0.75rem",
+    flexShrink: 0,
+  },
+  imagePreviewAnalyze: {
+    padding: "4px 12px",
+    borderRadius: 8,
+    border: "none",
+    background: "var(--accent)",
+    color: "#fff",
+    fontWeight: 600,
+    fontSize: "0.8rem",
     flexShrink: 0,
   },
   inputHint: {

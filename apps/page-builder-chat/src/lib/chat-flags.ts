@@ -34,11 +34,11 @@ export function isPlainTextCommandsEnabled(): boolean {
  * - **ollama**: Ollama only when URL is set; no OpenAI fallback.
  * - **openai**: OpenAI only; Ollama is skipped even if configured.
  */
-export type PageBuilderChatLlmProvider = "auto" | "ollama" | "openai";
+export type PageBuilderChatLlmProvider = "auto" | "ollama" | "openai" | "claude";
 
 export function getLlmProviderPreference(): PageBuilderChatLlmProvider {
   const v = process.env.PAGE_BUILDER_CHAT_LLM_PROVIDER?.trim().toLowerCase();
-  if (v === "openai" || v === "ollama" || v === "auto") {
+  if (v === "openai" || v === "ollama" || v === "auto" || v === "claude") {
     return v;
   }
   return "auto";
@@ -93,6 +93,10 @@ export function isOpenAiChatReady(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim()) && isPageBuilderChatAiEnabled();
 }
 
+export function isClaudeChatReady(): boolean {
+  return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+}
+
 export function isChatPanelEnabled(): boolean {
-  return isPlainTextCommandsEnabled() || getOllamaConfig() !== null || isOpenAiChatReady();
+  return isPlainTextCommandsEnabled() || getOllamaConfig() !== null || isOpenAiChatReady() || isClaudeChatReady();
 }
