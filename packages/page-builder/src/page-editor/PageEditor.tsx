@@ -67,6 +67,9 @@ export function PageEditor(props: Readonly<IPageEditorProps>) {
   function onChangeDataToParentIframe(data: Data) {
     const schema = removeApiResponse(data, pageStructure);
     const pageStructureJson = generatePageStructure(schema, { url: pageStructure.key }, pageStructure);
+    if(!pageStructureJson && data && JSON.stringify(pageStructure.data) ===  JSON.stringify(data) ) {
+      return;
+    }
     const eventData = {
       pageJson: pageStructureJson,
     };
