@@ -56,6 +56,10 @@ export function AiChatIframe({ page, onPageUpdate }: AiChatIframeProps) {
   useEffect(() => {
     function handleMessage(event: MessageEvent) {
       if (event.origin !== chatOrigin) return;
+      if (event.data?.type === "CHAT_PUBLISH_RELOAD") {
+        window.location.reload();
+        return;
+      }
       if (event.data?.type !== MSG_CHAT_PAGE_UPDATE) return;
       const updatedPage = event.data?.page as IPageStructure | undefined;
       if (updatedPage && typeof updatedPage === "object") {

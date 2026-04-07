@@ -405,6 +405,7 @@ export function ChatPageClient({ chatPanelEnabled, plainTextEnabled, openAiReady
         // Transfer the latest page structure back to the page-builder iframe host.
         if (typeof window !== "undefined" && window.parent && window.parent !== window) {
           window.parent.postMessage({ type: "CHAT_PAGE_UPDATE", page }, "*");
+          window.parent.postMessage({ type: "CHAT_PUBLISH_RELOAD" }, "*");
         }
         setTimeout(() => setPublishStatus(null), 2000);
       }
