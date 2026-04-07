@@ -46,6 +46,13 @@ function Client(props: Readonly<IClientProps>) {
   const chatUpdateInProgressRef = useRef(false);
 
   /**
+   * Debounce timer for streaming page updates. During streaming, we receive
+   * many partial_page events in rapid succession. We debounce the editorKey
+   * bump so Puck remounts at most once per interval (not per widget).
+   */
+  const streamingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
    * PageEditor broadcasts every Puck change to window.parent via postMessage
    * (category: "notify_visual_editor_changes"). In standalone mode window.parent
    * === window, so the event lands here. We capture it to keep currentPageStructure
@@ -71,6 +78,11 @@ function Client(props: Readonly<IClientProps>) {
    * the `data` prop in Puck is used only as initial state.
    */
   const handlePageUpdateFromChat = useCallback((updatedPage: IPageStructure) => {
+    // Clear any pending streaming debounce — the final update supersedes partials.
+    if (streamingDebounceRef.current) {
+      clearTimeout(streamingDebounceRef.current);
+      streamingDebounceRef.current = null;
+    }
     chatUpdateInProgressRef.current = true;
     setCurrentPageStructure(updatedPage);
     setEditorKey((k) => k + 1);
@@ -79,6 +91,31 @@ function Client(props: Readonly<IClientProps>) {
     setTimeout(() => {
       chatUpdateInProgressRef.current = false;
     }, 1000);
+  }, []);
+
+  /**
+   * Called by AiChatIframe during LLM streaming — partial page updates arrive
+   * as the AI generates widgets. We debounce the editorKey bump so Puck
+   * remounts at most once every 800ms, giving a smooth "widgets appearing"
+   * effect without excessive flicker.
+   */
+  const handleStreamingPageUpdate = useCallback((partialPage: IPageStructure) => {
+    chatUpdateInProgressRef.current = true;
+    setCurrentPageStructure(partialPage);
+
+    // Debounce the key bump: clear any pending bump, schedule a new one
+    if (streamingDebounceRef.current) {
+      clearTimeout(streamingDebounceRef.current);
+    }
+    streamingDebounceRef.current = setTimeout(() => {
+      setEditorKey((k) => k + 1);
+      streamingDebounceRef.current = null;
+      // Keep the guard active during streaming — the final CHAT_PAGE_UPDATE
+      // will trigger handlePageUpdateFromChat which resets it after 1000ms.
+      setTimeout(() => {
+        chatUpdateInProgressRef.current = false;
+      }, 1000);
+    }, 800);
   }, []);
 
   // Prevent scroll events from changing input[type="number"] values
@@ -161,7 +198,11 @@ function Client(props: Readonly<IClientProps>) {
         mode={props?.mode}
       />
 
-      <AiChatIframe page={currentPageStructure} onPageUpdate={handlePageUpdateFromChat} />
+      <AiChatIframe
+        page={currentPageStructure}
+        onPageUpdate={handlePageUpdateFromChat}
+        onStreamingPageUpdate={handleStreamingPageUpdate}
+      />
       {isLoading && <OverlayLoader color="#fff" />}
     </SessionProvider>
   );

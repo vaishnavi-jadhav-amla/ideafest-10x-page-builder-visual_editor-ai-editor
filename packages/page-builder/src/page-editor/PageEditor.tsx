@@ -69,7 +69,7 @@ export function PageEditor(props: Readonly<IPageEditorProps>) {
     const schema = removeApiResponse(data, pageStructure);
     const schemaString = JSON.stringify(schema);
     if (schemaString === lastSentSchemaRef.current) {
-      return;
+      return
     }
     lastSentSchemaRef.current = schemaString;
     const pageStructureJson = generatePageStructure(schema, { url: pageStructure.key }, pageStructure);

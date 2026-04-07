@@ -15,8 +15,6 @@ const DataStateHandler: React.FC<DataStateHandlerProps> = ({
   children,
 }) => {
 
-  const storeCode = typeof window !== "undefined" ? new URL(window.location.href).searchParams.get("storeCode") : "";
-
   const isLoading = typeof response !== "string" && !response;
 
   const isEmpty =
@@ -25,13 +23,11 @@ const DataStateHandler: React.FC<DataStateHandlerProps> = ({
     (typeof response === "object" && response !== null && Object.keys(response).length === 0) ||
     (typeof response === "string" && response.trim() === "");
 
-  if (storeCode) {
-    if (isLoading) {
-      return <div className="data-state-handler-loading-message">{loadingMessage}</div>;
-    }
-    if (isEmpty) {
-      return <div className="data-state-handler-empty-message">{emptyMessage}</div>;
-    }
+  if (isLoading) {
+    return <div className="data-state-handler-loading-message">{loadingMessage}</div>;
+  }
+  if (isEmpty) {
+    return <div className="data-state-handler-empty-message">{emptyMessage}</div>;
   }
 
   return <>{children}</>;

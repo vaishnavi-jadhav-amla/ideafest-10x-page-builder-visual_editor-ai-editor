@@ -424,8 +424,21 @@ export function ChatPageClient({ chatPanelEnabled, plainTextEnabled, openAiReady
     setLoading(true);
     const imgPayload = selectedImage;
     setSelectedImage(null);
+
+    /**
+     * Helper: send a page update to the parent (page-builder) window for live preview.
+     * During streaming this is called for each partial page so the editor renders
+     * widgets progressively as the LLM generates them.
+     */
+    function sendPageToParent(pageData: typeof INITIAL_PAGE) {
+      if (typeof window !== "undefined" && window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: "CHAT_PAGE_STREAMING_UPDATE", page: pageData }, "*");
+      }
+    }
+
     try {
-      const res = await fetch("/api/chat", {
+      // Attempt streaming endpoint first
+      const res = await fetch("/api/chat-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -436,24 +449,120 @@ export function ChatPageClient({ chatPanelEnabled, plainTextEnabled, openAiReady
         }),
         cache: "no-store",
       });
-      const data = (await res.json()) as ChatApiJson;
-      if (!res.ok) {
-        setLastError(data.error ?? res.statusText);
-        pushAssistant(`Error: ${data.error ?? res.statusText}`);
+
+      // If streaming endpoint is unavailable (404/503), fall back to non-streaming
+      if (!res.ok || !res.body) {
+        const fallbackRes = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            page,
+            imageBase64: imgPayload.base64,
+            imageMimeType: imgPayload.mimeType,
+            message: userMsg || undefined,
+          }),
+          cache: "no-store",
+        });
+        const data = (await fallbackRes.json()) as ChatApiJson;
+        if (!fallbackRes.ok) {
+          setLastError(data.error ?? fallbackRes.statusText);
+          pushAssistant(`Error: ${data.error ?? fallbackRes.statusText}`);
+          return;
+        }
+        const nextPage = pageFromApiPayload(data.page);
+        if (nextPage !== null) {
+          setPage(nextPage);
+          sendPageToParent(nextPage);
+        }
+        pushAssistant(formatChatAssistantReply(data.assistantContent, data.applied, data.errors));
         return;
       }
-      const nextPage = pageFromApiPayload(data.page);
-      if (nextPage !== null) setPage(nextPage);
-      const appliedNdjson = commandsToNdjson(data.toolArgumentsParsed?.[0]?.commands);
-      if (appliedNdjson) setCommandsInput(appliedNdjson);
-      if (data.bannerSliderChoices?.length) {
-        setBannerSliderChoices(data.bannerSliderChoices);
-        setBannerSliderUpdateComponentId(data.bannerSliderUpdateComponentId ?? null);
+
+      // Process SSE stream
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let descriptionShown = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        let currentEvent = "";
+        for (const line of lines) {
+          if (line.startsWith("event: ")) {
+            currentEvent = line.slice(7).trim();
+          } else if (line.startsWith("data: ") && currentEvent) {
+            try {
+              const payload = JSON.parse(line.slice(6));
+
+              switch (currentEvent) {
+                case "description":
+                  if (!descriptionShown && payload.text) {
+                    descriptionShown = true;
+                    pushAssistant(`Analyzing image: ${payload.text}`);
+                  }
+                  break;
+
+                case "partial_page": {
+                  const partialPage = pageFromApiPayload(payload.page);
+                  if (partialPage) {
+                    setPage(partialPage);
+                    sendPageToParent(partialPage);
+                  }
+                  break;
+                }
+
+                case "complete": {
+                  const finalPage = pageFromApiPayload(payload.page);
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const fp = finalPage as any;
+                  console.log("[chat-client] COMPLETE received — finalPage zone keys:", Object.keys(fp?.data?.zones ?? {}));
+                  console.log("[chat-client] COMPLETE received — finalPage widgets:", JSON.stringify(fp?.widgets));
+                  // Log widget types per zone
+                  for (const [zk, zv] of Object.entries(fp?.data?.zones ?? {})) {
+                    const types = (zv as { type?: string }[]).map((w: { type?: string }) => w.type);
+                    console.log(`[chat-client] COMPLETE — zone "${zk}" widget types:`, types);
+                  }
+                  if (finalPage) {
+                    setPage(finalPage);
+                    // Send final complete page update (non-streaming type so parent does full sync)
+                    if (typeof window !== "undefined" && window.parent && window.parent !== window) {
+                      window.parent.postMessage({ type: "CHAT_PAGE_UPDATE", page: finalPage }, "*");
+                    }
+                  }
+                  const content = payload.assistantContent ?? "Image analysis complete.";
+                  // Replace the earlier "Analyzing image" message with final content
+                  setMessages((m) => {
+                    const updated = [...m];
+                    // Find and update the last assistant message about analyzing
+                    for (let i = updated.length - 1; i >= 0; i--) {
+                      if (updated[i].role === "assistant" && updated[i].content.startsWith("Analyzing image:")) {
+                        updated[i] = { ...updated[i], content };
+                        return updated;
+                      }
+                    }
+                    return [...updated, { role: "assistant" as const, content }];
+                  });
+                  break;
+                }
+
+                case "error":
+                  setLastError(payload.message ?? "Streaming error");
+                  pushAssistant(`Error: ${payload.message ?? "Unknown streaming error"}`);
+                  break;
+              }
+            } catch {
+              // Skip malformed SSE data lines
+            }
+            currentEvent = "";
+          }
+        }
       }
-      if (data.productCarouselPicker) {
-        setProductCarousel((prev) => mergeProductCarouselPicker(prev, data.productCarouselPicker!));
-      }
-      pushAssistant(formatChatAssistantReply(data.assistantContent, data.applied, data.errors));
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setLastError(msg);

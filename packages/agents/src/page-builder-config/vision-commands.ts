@@ -1,8 +1,14 @@
+/* eslint-disable max-len */
 /* eslint-disable no-console */
 import type { IPageStructure } from "@znode/types/visual-editor";
-import { randomUUID } from "crypto";
 
 import { buildWidgetCatalogPrompt, WIDGET_CATALOG } from "./widget-catalog";
+
+/* -------------------------------------------------------------------------- */
+/*  JSON parsing + UUID post-processing (shared module)                       */
+/* -------------------------------------------------------------------------- */
+
+import { parseAndPostProcess } from "./vision-commands-parse";
 
 /* -------------------------------------------------------------------------- */
 /*  Types                                                                     */
@@ -63,7 +69,7 @@ export interface RunOllamaVisionOptions extends RunVisionCommandsOptions {
 /*  System prompt (shared between OpenAI and Ollama)                          */
 /* -------------------------------------------------------------------------- */
 
-const VISION_SYSTEM_PROMPT = `You are a Znode page builder assistant with computer vision. The user uploads a screenshot or mockup of a web page (or a section of one). Your job is to analyze the image and output a JSON object that maps visual elements to Puck page builder widgets.
+export const VISION_SYSTEM_PROMPT = `You are a Znode page builder assistant with computer vision. The user uploads a screenshot or mockup of a web page (or a section of one). Your job is to analyze the image and output a JSON object that maps visual elements to Puck page builder widgets.
 
 ${buildWidgetCatalogPrompt()}
 
@@ -72,7 +78,7 @@ REFERENCE EXAMPLE — A real page image (wholesale plumbing supply homepage) pro
   "description": "Wholesale plumbing supply homepage with banner slider, hero text, industry cards, advantage section, featured categories/products carousels, video, and brand links.",
   "data": {
     "content": [
-      {"type":"VerticalSpacing","props":{"size":"24px","id":"VerticalSpacing-xxx"}},
+          {"type":"VerticalSpacing","props":{"size":"24px","id":"VerticalSpacing-xxx"}},
       {"type":"Container","props":{"align":"center","block":"box","maxWidth":1200,
         "margin":{"top":"0","right":"0","bottom":"0","left":"0"},
         "padding":{"top":"0","right":"0","bottom":"0","left":"0"},
@@ -82,13 +88,12 @@ REFERENCE EXAMPLE — A real page image (wholesale plumbing supply homepage) pro
         "id":"Container-xxx","layout":"custom",
         "flexProperties":{"flexDirection":"column","rowAlignment":{},"columnAlignment":{},"flexWrap":"nowrap"},
         "rigidView":"no"}},
-      {"type":"VerticalSpacing","props":{"size":"96px","id":"VerticalSpacing-xxx"}}
+        {"type":"VerticalSpacing","props":{"size":"96px","id":"VerticalSpacing-xxx"}}
     ],
     "root": {"props": {}},
     "zones": {
       "Container-xxx:Container": [
         {"type":"BannerSlider","props":{"axis":"horizontal","showThumbs":true,"showArrows":true,"infiniteLoop":true,"interval":2000,"transitionTime":2000,"showIndicators":true,"autoPlay":true,"config":{"type":"Widget","id":"BannerSliderWidget","hasConfigurable":true,"widgetConfig":{"masterWidgetKey":"555","widgetKey":"555","widgetCode":"BannerSlider","displayName":"Banner Slider"}},"id":"BannerSlider-001"}},
-        {"type":"VerticalSpacing","props":{"size":"24px","id":"VerticalSpacing-xxx"}},
         {"type":"Heading","props":{"align":"left","text":"Your Trusted Partner for Wholesale Plumbing Supplies, HVAC, Municipal & More","margin":{"top":"0","right":"0","bottom":"0","left":"0"},"padding":{"top":"0","right":"0","bottom":"0","left":"0"},"border":{"width":"0","color":"black","style":"solid","borderRadius":0},"size":"xl","background":"transparent","textColor":"black","id":"Heading-xxx","level":"2"}},
         {"type":"RichTextWidget","props":{"text":"<p>At Etna Supply, we're committed to being more than just a supplier...</p>","config":{"type":"Widget","id":"RichTextWidget","hasConfigurable":true,"hasPostMessage":true},"id":"RichTextWidget-xxx"}},
         {"type":"Column","props":{"distribution":"manual","columns":[{"span":1},{"span":5},{"span":5},{"span":1}],"gap":2,"margin":{"top":0,"right":0,"bottom":0,"left":0},"hasDropZoneDisabled":false,"id":"Column-xxx"}},
@@ -106,7 +111,7 @@ REFERENCE EXAMPLE — A real page image (wholesale plumbing supply homepage) pro
         {"type":"LinkPanel","props":{"contentOrientation":"horizontal","customClass":"homepagebrands","config":{"type":"Widget","id":"LinkPanelWidget","hasConfigurable":true,"widgetConfig":{"masterWidgetKey":"2253","widgetKey":"2253","widgetCode":"LinkPanel","displayName":"Link Panel"}},"id":"LinkPanel-001"}}
       ],
       "Column-xxx:column-0": [
-        {"type":"Image","props":{"image":"/_next/static/media/no-image.610b4c69.png","alt":"Icon","url":"","layout":"fixed","height":125,"width":125,"alignment":"center","borderRadius":"0px","target":"_self","id":"Image-xxx","locale":{"en-US":{"image":"/_next/static/media/no-image.610b4c69.png","alt":"Icon"}},"readOnly":{"width":false,"height":false,"alignment":false}}},
+        {"type":"Image","props":{"image":"https://placehold.co/125x125","alt":"Icon","url":"","layout":"fixed","height":125,"width":125,"alignment":"center","borderRadius":"0px","target":"_self","id":"Image-xxx","locale":{"en-US":{"image":"https://placehold.co/125x125","alt":"Icon"}},"readOnly":{"width":false,"height":false,"alignment":false}}},
         {"type":"Heading","props":{"align":"center","text":"We Know Our Stuff","margin":{"top":"0","right":"0","bottom":"0","left":"0"},"padding":{"top":"0","right":"0","bottom":"0","left":"0"},"border":{"width":"0","color":"black","style":"solid","borderRadius":0},"size":"m","background":"transparent","textColor":"#6d0020","id":"Heading-xxx","level":"3"}},
         {"type":"RichTextWidget","props":{"text":"<p class=\\"ql-align-center\\">With decades of industry expertise...</p>","id":"RichTextWidget-xxx"}}
       ],
@@ -135,8 +140,9 @@ KEY PATTERNS FROM THE REFERENCE:
 - DynamicWidget is used for custom HTML/CSS blocks (horizontal rules <hr>, embedded CTAs, styled division cards with background images)
 - Column widgets create multi-column layouts: "distribution" is "auto" (equal) or "manual" (custom spans); child widgets go in zones "Column-{id}:column-0", "Column-{id}:column-1", etc.
 - CMS widgets (BannerSlider, ProductsCarousel, CategoriesCarousel, LinkPanel) have a "config" object with widgetConfig including masterWidgetKey, widgetKey, widgetCode, displayName
-- Image widgets have: image (placeholder URL "/_next/static/media/no-image.610b4c69.png"), alt, url, layout, height, width, alignment, borderRadius (string "0px"), target, locale {"en-US":{"image":"...","alt":"..."}}, readOnly {"width":false,"height":false,"alignment":false}
+- Image widgets have: image (use https://placehold.co/{width}x{height} with dimensions matching the layout context, e.g. "https://placehold.co/600x400" for a content image, "https://placehold.co/1200x500" for a banner, "https://placehold.co/125x125" for an icon), alt, url, layout, height, width, alignment, borderRadius (string "0px"), target, locale {"en-US":{"image":"https://placehold.co/{width}x{height}","alt":"..."}}, readOnly {"width":false,"height":false,"alignment":false}
 - Video widgets have: video (placeholder URL "/_next/static/media/no-image.610b4c69.png"), autoPlay, controlEnable, locale {"en-US":{"video":"..."}}
+- ButtonGroup widgets support an "align" prop ("left"|"center"|"right"). Default to "center" so buttons appear centered within their parent section. Only use "left" or "right" when the design clearly shows non-centered buttons.
 - RichTextWidget uses HTML string in "text" prop with Quill CSS classes
 
 CRITICAL — MANDATORY PROPS (omitting these causes renderer crashes):
@@ -144,7 +150,8 @@ CRITICAL — MANDATORY PROPS (omitting these causes renderer crashes):
 - **Text** MUST always include: padding {top,right,bottom,left} (strings)
 - **Column** MUST always include: margin {top,right,bottom,left} (numbers), hasDropZoneDisabled (boolean)
 - **Container** MUST always include: margin {top,right,bottom,left} (strings — use "0" not "auto"), padding {top,right,bottom,left} (plain number strings like "48" not "48px"), border {width,color,style,borderRadius}, image.backgroundColor (hex color string e.g. "#1a1a1a" or "" for transparent — use this for solid background colors on sections)
-- **Image** MUST always include: image (use placeholder "/_next/static/media/no-image.610b4c69.png"), alt, url, layout, height, width, alignment, borderRadius (string "0px"), target, locale, readOnly
+- **Image** MUST always include: image (use "https://placehold.co/{width}x{height}" where width/height match your specified dimensions — e.g. "https://placehold.co/600x400"), alt, url, layout, height, width, alignment, borderRadius (string "0px"), target, locale, readOnly
+- **ButtonGroup** MUST always include: align ("left"|"center"|"right" — default "center"), buttons array
 
 RULES:
 1. Analyze the image top-to-bottom. For each visual section, decide which widget best represents it. IMPORTANT: SKIP the site header (logo, navigation menu, search bar, account/cart icons) and the site footer (copyright, footer links, social icons). Only generate JSON for the MAIN BODY CONTENT between the header and footer.
@@ -188,194 +195,8 @@ OUTPUT FORMAT — respond with ONLY this JSON (no markdown, no extra text):
   ]
 }`;
 
-/* -------------------------------------------------------------------------- */
-/*  JSON parsing helper                                                       */
-/* -------------------------------------------------------------------------- */
-
 function parseVisionJson(content: string): VisionAnalysisResult {
-  const trimmed = content.trim();
-
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(trimmed) as Record<string, unknown>;
-  } catch {
-    // Try extracting from markdown fences
-    const fence = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (fence?.[1]?.trim()) {
-      parsed = JSON.parse(fence[1].trim()) as Record<string, unknown>;
-    } else {
-      // Try finding first { to last }
-      const start = trimmed.indexOf("{");
-      const end = trimmed.lastIndexOf("}");
-      if (start >= 0 && end > start) {
-        parsed = JSON.parse(trimmed.slice(start, end + 1)) as Record<string, unknown>;
-      } else {
-        throw new Error("Could not find valid JSON object in vision model output");
-      }
-    }
-  }
-
-  // Extract the data object (content, root, zones)
-  const rawData = typeof parsed.data === "object" && parsed.data !== null
-    ? (parsed.data as Record<string, unknown>)
-    : {};
-  const data = {
-    content: Array.isArray(rawData.content) ? rawData.content : [],
-    root: typeof rawData.root === "object" && rawData.root !== null
-      ? (rawData.root as { props: Record<string, unknown> })
-      : { props: {} },
-    zones: typeof rawData.zones === "object" && rawData.zones !== null
-      ? (rawData.zones as Record<string, unknown[]>)
-      : {},
-  };
-
-  const widgets = Array.isArray(parsed.widgets)
-    ? (parsed.widgets as { widgetKey: string; type: string }[]).filter(
-        (w) => typeof w === "object" && w !== null && typeof w.widgetKey === "string" && typeof w.type === "string"
-      )
-    : [];
-
-  const cmsWidgetSuggestions = Array.isArray(parsed.cmsWidgetSuggestions)
-    ? (parsed.cmsWidgetSuggestions as CmsWidgetSuggestion[]).filter(
-        (s) =>
-          typeof s === "object" &&
-          s !== null &&
-          typeof s.componentType === "string" &&
-          WIDGET_CATALOG.some((w) => w.componentType === s.componentType)
-      )
-    : [];
-  const description =
-    typeof parsed.description === "string" ? parsed.description : "Image analyzed";
-
-  const result: VisionAnalysisResult = { data, widgets, cmsWidgetSuggestions, description };
-
-  // Post-process: replace LLM-generated placeholder IDs with real UUIDs
-  // and ensure widgetKey/id consistency for CMS widget popups to work.
-  return assignRealUuids(result);
-}
-
-/* -------------------------------------------------------------------------- */
-/*  UUID post-processing — fix widget IDs and widgetKeys for Znode popups     */
-/* -------------------------------------------------------------------------- */
-
-/**
- * The LLM generates placeholder IDs like "BannerSlider-uuid" or "Heading-001".
- * Znode requires:
- *   - Widget id: "{ComponentType}-{uuid}"  (real UUID v4)
- *   - widgetKey:  "{masterWidgetKey}-{uuid}"  (same uuid)
- *   - widgets[] array widgetKey must match the one in props.config.widgetConfig
- *   - Zone keys must reference the correct id
- *
- * This function walks the entire data structure and replaces all IDs.
- */
-function assignRealUuids(result: VisionAnalysisResult): VisionAnalysisResult {
-  // Map from old id → new id, and old id → uuid (for zone key rewriting)
-  const idMap = new Map<string, string>();     // oldId → newId
-  const uuidMap = new Map<string, string>();   // oldId → uuid
-
-  // Phase 1: Walk all content items and zone items to collect old ids and assign new ones.
-  function collectIds(item: Record<string, unknown>) {
-    const props = item.props as Record<string, unknown> | undefined;
-    if (!props) return;
-    const oldId = props.id as string | undefined;
-    const type = item.type as string | undefined;
-    if (!oldId || !type) return;
-    if (idMap.has(oldId)) return; // already processed
-    const uuid = randomUUID();
-    const newId = `${type}-${uuid}`;
-    idMap.set(oldId, newId);
-    uuidMap.set(oldId, uuid);
-  }
-
-  for (const item of result.data.content) {
-    collectIds(item as Record<string, unknown>);
-  }
-  for (const zoneItems of Object.values(result.data.zones)) {
-    for (const item of zoneItems) {
-      collectIds(item as Record<string, unknown>);
-    }
-  }
-
-  // Phase 2: Rewrite IDs in props, fix widgetKey in config, fix zone keys.
-  function rewriteItem(item: Record<string, unknown>) {
-    const props = item.props as Record<string, unknown> | undefined;
-    if (!props) return;
-    const oldId = props.id as string | undefined;
-    if (!oldId) return;
-    const newId = idMap.get(oldId);
-    const uuid = uuidMap.get(oldId);
-    if (!newId || !uuid) return;
-    props.id = newId;
-
-    // Fix widgetKey in config.widgetConfig
-    const config = props.config as Record<string, unknown> | undefined;
-    if (config) {
-      const wc = config.widgetConfig as Record<string, unknown> | undefined;
-      if (wc && typeof wc.masterWidgetKey === "string") {
-        wc.widgetKey = `${wc.masterWidgetKey}-${uuid}`;
-      }
-      // Fix FormWidget postMessagePayload widgetKey
-      const pmp = config.postMessagePayload as Record<string, unknown> | undefined;
-      if (pmp) {
-        const pmpData = pmp.data as Record<string, unknown> | undefined;
-        if (pmpData && typeof pmpData.widgetCode === "string") {
-          pmpData.widgetKey = `${pmpData.widgetCode === "FormWidget" ? "" : ""}${props.id}`;
-        }
-      }
-    }
-  }
-
-  for (const item of result.data.content) {
-    rewriteItem(item as Record<string, unknown>);
-  }
-  for (const zoneItems of Object.values(result.data.zones)) {
-    for (const item of zoneItems) {
-      rewriteItem(item as Record<string, unknown>);
-    }
-  }
-
-  // Phase 3: Rewrite zone keys. Old key "Column-xxx:column-0" → "Column-{newUuid}:column-0"
-  const newZones: Record<string, unknown[]> = {};
-  for (const [oldKey, items] of Object.entries(result.data.zones)) {
-    let newKey = oldKey;
-    // Zone key format: "{parentId}:{zoneName}" — replace the parentId portion
-    const colonIdx = oldKey.indexOf(":");
-    if (colonIdx > 0) {
-      const parentId = oldKey.slice(0, colonIdx);
-      const zoneName = oldKey.slice(colonIdx); // includes the colon
-      const mappedParentId = idMap.get(parentId);
-      if (mappedParentId) {
-        newKey = `${mappedParentId}${zoneName}`;
-      }
-    }
-    newZones[newKey] = items;
-  }
-  result.data.zones = newZones;
-
-  // Phase 4: Rebuild widgets[] array from the actual CMS widgets in data
-  const newWidgets: { widgetKey: string; type: string }[] = [];
-  function extractWidgetRefs(item: Record<string, unknown>) {
-    const props = item.props as Record<string, unknown> | undefined;
-    if (!props) return;
-    const config = props.config as Record<string, unknown> | undefined;
-    if (!config) return;
-    const wc = config.widgetConfig as Record<string, unknown> | undefined;
-    if (wc && typeof wc.widgetKey === "string" && typeof wc.widgetCode === "string") {
-      newWidgets.push({ widgetKey: wc.widgetKey, type: wc.widgetCode });
-    }
-  }
-
-  for (const item of result.data.content) {
-    extractWidgetRefs(item as Record<string, unknown>);
-  }
-  for (const zoneItems of Object.values(result.data.zones)) {
-    for (const item of zoneItems) {
-      extractWidgetRefs(item as Record<string, unknown>);
-    }
-  }
-  result.widgets = newWidgets;
-
-  return result;
+  return parseAndPostProcess(content);
 }
 
 /* -------------------------------------------------------------------------- */

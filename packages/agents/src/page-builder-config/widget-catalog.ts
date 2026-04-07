@@ -62,11 +62,12 @@ export const WIDGET_CATALOG: WidgetCatalogEntry[] = [
     componentType: "ButtonGroup",
     category: "ui",
     description:
-      "A group of styled CTA buttons. Each button has label, href, variant (primary/secondary), and target.",
+      "A group of styled CTA buttons. Each button has label, href, variant (primary/secondary), and target. Use align prop ('left'|'center'|'right') to control horizontal alignment within the parent section.",
     requiresCmsPicker: false,
     visualHint:
-      "Use when you see buttons, call-to-action elements, 'Shop Now', 'Learn More', or any clickable button-styled elements.",
+      "Use when you see buttons, call-to-action elements, 'Shop Now', 'Learn More', or any clickable button-styled elements. Set align to 'center' when the button appears centered in its section.",
     defaultProps: {
+      align: "center",
       buttons: [
         { label: "Learn more", href: "#", variant: "primary", target: "_self" },
       ],
