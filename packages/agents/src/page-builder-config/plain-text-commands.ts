@@ -4,6 +4,63 @@ function newWidgetId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/* ── lightweight fuzzy helpers (self-contained, no app-lib import) ──── */
+
+function levenshteinDist(a: string, b: string): number {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const row: number[] = Array.from({ length: n + 1 }, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    let prev = row[0]!;
+    row[0] = i;
+    for (let j = 1; j <= n; j++) {
+      const tmp = row[j]!;
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      row[j] = Math.min(row[j]! + 1, row[j - 1]! + 1, prev + cost);
+      prev = tmp;
+    }
+  }
+  return row[n]!;
+}
+
+function fuzzyMatch(input: string, candidates: readonly string[], maxDist = 2): string | null {
+  const lower = input.toLowerCase();
+  let best: string | null = null;
+  let bestDist = maxDist + 1;
+  for (const c of candidates) {
+    const d = levenshteinDist(lower, c);
+    if (d < bestDist) { best = c; bestDist = d; }
+  }
+  return best;
+}
+
+const ADD_VERBS = ["add", "insert", "create", "put", "place", "include"];
+const WIDGET_NAMES: Record<string, string> = {
+  text: "Text",
+  heading: "Heading",
+  container: "Container",
+  column: "Column",
+  "verticalspace": "VerticalSpacing",
+  "buttongroup": "ButtonGroup",
+  "emptybox": "EmptyBox",
+  "productlist": "ProductListPage",
+  "productdetails": "ProductDetailsPage",
+};
+const WIDGET_NORM_KEYS = Object.keys(WIDGET_NAMES);
+
+function fuzzyAddVerb(word: string): boolean {
+  return fuzzyMatch(word, ADD_VERBS, 2) !== null;
+}
+
+function fuzzyWidgetType(tail: string): string | null {
+  const norm = tail.toLowerCase().trim().replace(/\s+/g, "");
+  if (WIDGET_NAMES[norm]) return WIDGET_NAMES[norm]!;
+  const matched = fuzzyMatch(norm, WIDGET_NORM_KEYS, 2);
+  return matched ? WIDGET_NAMES[matched]! : null;
+}
+
 /** Short help shown when nothing matches or user types "help". */
 export const PLAIN_TEXT_COMMANDS_HELP = `Local plain-text commands (no API key). One instruction per line:
 
@@ -463,6 +520,99 @@ export function interpretPlainTextPageCommands(input: string): PageBuilderComman
     if ((m = line.match(/^remove(?:\s+component)?\s+(\S.+)$/i))) {
       commands.push({ kind: "remove_component", target, componentId: m[1].trim() });
       continue;
+    }
+
+    /* ── fuzzy fallback: catches typos that missed all exact patterns above ── */
+    const words = line.split(/\s+/);
+    if (words.length >= 2) {
+      const verb = words[0]!;
+      if (fuzzyAddVerb(verb)) {
+        const tail = words.slice(1).join(" ");
+        const widgetType = fuzzyWidgetType(tail.replace(/\s*\d+\s*px\s*$/, "").trim());
+        if (widgetType === "Text") {
+          const text = tail.replace(/^text\b\s*/i, "").trim() || "New text";
+          if (!LOCAL_STYLING_HINT.test(text)) {
+            commands.push({
+              kind: "append_component", target, componentType: "Text",
+              props: { align: "left", text, padding: { top: "0", right: "0", bottom: "0", left: "0" }, size: "m", color: "default", weight: "normal" },
+              id: newWidgetId("Text"),
+            });
+            continue;
+          }
+        }
+        if (widgetType === "Heading") {
+          const text = tail.replace(/^heading\b\s*/i, "").trim() || "Heading";
+          if (!LOCAL_STYLING_HINT.test(text)) {
+            commands.push({
+              kind: "append_component", target, componentType: "Heading",
+              props: { align: "left", text, margin: { top: "0", right: "0", bottom: "0", left: "0" }, padding: { top: "0", right: "0", bottom: "0", left: "0" }, border: { width: "0", color: "black", style: "solid", borderRadius: 0 }, size: "l", background: "transparent", textColor: "black", level: "2" },
+              id: newWidgetId("Heading"),
+            });
+            continue;
+          }
+        }
+        if (widgetType === "Container") {
+          commands.push({
+            kind: "append_component", target, componentType: "Container",
+            props: { align: "center", layout: "standard", flexProperties: { flexDirection: "column", rowAlignment: { justifyContent: "flex-start", alignItems: "flex-start" }, columnAlignment: { alignItems: "flex-start", justifyContent: "flex-start" }, flexWrap: "nowrap", gap: 16 }, rigidView: "no", maxWidth: 1200, margin: { top: "0", right: "0", bottom: "0", left: "0" }, padding: { top: "16", right: "16", bottom: "16", left: "16" }, border: { width: "0", color: "black", borderClass: "solid", borderRadius: 0 }, height: "auto", image: { src: "", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" } },
+            id: newWidgetId("Container"),
+          });
+          continue;
+        }
+        if (widgetType === "Column") {
+          commands.push({
+            kind: "append_component", target, componentType: "Column",
+            props: { distribution: "auto", columns: [{}, {}], gap: 2, hasDropZoneDisabled: false, margin: { top: 0, right: 0, bottom: 0, left: 0 } },
+            id: newWidgetId("Column"),
+          });
+          continue;
+        }
+        if (widgetType === "VerticalSpacing") {
+          const px = tail.match(/(\d+)\s*px/i);
+          const size = px?.[1] ? `${px[1]}px` : "24px";
+          commands.push({ kind: "append_component", target, componentType: "VerticalSpacing", props: { size }, id: newWidgetId("VerticalSpacing") });
+          continue;
+        }
+        if (widgetType === "ButtonGroup") {
+          commands.push({
+            kind: "append_component", target, componentType: "ButtonGroup",
+            props: { align: "left", buttons: [{ label: "Button", href: "#", variant: "primary", target: "_self" }] },
+            id: newWidgetId("ButtonGroup"),
+          });
+          continue;
+        }
+        if (widgetType === "EmptyBox") {
+          commands.push({ kind: "append_component", target, componentType: "EmptyBox", props: {}, id: newWidgetId("EmptyBox") });
+          continue;
+        }
+        if (widgetType === "ProductListPage") {
+          commands.push({ kind: "append_component", target, componentType: "ProductListPage", props: { config: { id: "category" } }, id: newWidgetId("ProductListPage") });
+          continue;
+        }
+        if (widgetType === "ProductDetailsPage") {
+          commands.push({ kind: "append_component", target, componentType: "ProductDetailsPage", props: { config: { id: "product" } }, id: newWidgetId("ProductDetailsPage") });
+          continue;
+        }
+      }
+
+      if (fuzzyMatch(verb, ["clear"], 2)) {
+        commands.push({ kind: "clear_content", target });
+        continue;
+      }
+      if (fuzzyMatch(verb, ["remove", "delete"], 2) && words.length >= 2) {
+        const rest = words.slice(1).join(" ").replace(/^component\s+/i, "").trim();
+        if (rest) {
+          commands.push({ kind: "remove_component", target, componentId: rest });
+          continue;
+        }
+      }
+      if (fuzzyMatch(verb, ["set"], 1) && words.length >= 3) {
+        const secondWord = fuzzyMatch(words[1]!, ["title", "page"], 2);
+        if (secondWord === "title" && words.length >= 3) {
+          commands.push({ kind: "merge_root_props", target, props: { title: words.slice(2).join(" ").trim() } });
+          continue;
+        }
+      }
     }
   }
 

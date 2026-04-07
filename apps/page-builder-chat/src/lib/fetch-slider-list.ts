@@ -1118,12 +1118,15 @@ export function isAddAdSpaceChatIntent(message: string): boolean {
   if (!m) {
     return false;
   }
-  return (
+  if (
     /\badd\s+ad\s*space\b/.test(m) ||
     /\badd\s+adspace\b/.test(m) ||
     /\binsert\s+ad\s*space\b/.test(m) ||
     /\binsert\s+adspace\b/.test(m)
-  );
+  ) {
+    return true;
+  }
+  return intentFuzzyMatch(m, ["adspace", "ad space"]);
 }
 
 /**
@@ -1162,67 +1165,47 @@ export function buildAdSpaceAppendCommand(opts: {
   };
 }
 
-/** For fuzzy match: letters-only tail after `add` / `insert` (e.g. `homepagepromo`). */
-function homePagePromoTailAfterVerb(m: string): string | null {
-  const t = m.trim().toLowerCase();
-  const match = /^(?:add|insert)\s+(.+)$/.exec(t);
-  if (!match) {
-    return null;
+import { fuzzyAddVerb, fuzzyUpdateVerb, fuzzyWidgetName } from "./fuzzy-match";
+
+function intentFuzzyMatch(lower: string, targets: readonly string[], mode: "add" | "update" | "both" = "add"): boolean {
+  const words = lower.trim().split(/\s+/);
+  if (words.length < 2) return false;
+  let verb = words[0]!;
+  let startIdx = 1;
+  if (verb === "please" && words.length >= 3) {
+    verb = words[1]!;
+    startIdx = 2;
   }
-  return match[1]!.replace(/[^a-z]/g, "");
+  if (verb === "a" || verb === "an") return false;
+
+  const isAdd = fuzzyAddVerb(verb) !== null;
+  const isUpdate = fuzzyUpdateVerb(verb) !== null;
+
+  if (mode === "add" && !isAdd) return false;
+  if (mode === "update" && !isUpdate) return false;
+  if (mode === "both" && !isAdd && !isUpdate) return false;
+
+  let tail = words.slice(startIdx).join(" ");
+  tail = tail.replace(/^(?:a|an|the)\s+/i, "");
+  if (!tail) return false;
+
+  return fuzzyWidgetName(tail, targets, 3) !== null;
 }
 
-function levenshtein(a: string, b: string): number {
-  const m = a.length;
-  const n = b.length;
-  if (m === 0) {
-    return n;
-  }
-  if (n === 0) {
-    return m;
-  }
-  const row: number[] = Array.from({ length: n + 1 }, (_, j) => j);
-  for (let i = 1; i <= m; i++) {
-    let prev = row[0]!;
-    row[0] = i;
-    for (let j = 1; j <= n; j++) {
-      const tmp = row[j]!;
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      row[j] = Math.min(row[j]! + 1, row[j - 1]! + 1, prev + cost);
-      prev = tmp;
-    }
-  }
-  return row[n]!;
-}
-
-/**
- * Matches **add home page promo**, **add homepagepromo**, **insert …**, spacing variants,
- * and common misspellings (Levenshtein on collapsed tail vs `homepagepromo`).
- */
 export function isAddHomePagePromoChatIntent(message: string): boolean {
   const m = message.trim().toLowerCase();
-  if (!m || !/\b(add|insert)\b/.test(m)) {
-    return false;
-  }
+  if (!m) return false;
   if (
     /\badd\s+home\s*page\s*promo\b/.test(m) ||
-    /\badd\s+home\s+page\s+promo\b/.test(m) ||
     /\badd\s+homepage\s+promo\b/.test(m) ||
     /\badd\s+homepagepromo\b/.test(m) ||
     /\binsert\s+home\s*page\s*promo\b/.test(m) ||
-    /\binsert\s+home\s+page\s+promo\b/.test(m) ||
     /\binsert\s+homepage\s+promo\b/.test(m) ||
     /\binsert\s+homepagepromo\b/.test(m)
   ) {
     return true;
   }
-
-  const tail = homePagePromoTailAfterVerb(m);
-  const target = "homepagepromo";
-  if (!tail || tail.length < target.length - 3 || tail.length > target.length + 6) {
-    return false;
-  }
-  return levenshtein(tail, target) <= 3;
+  return intentFuzzyMatch(m, ["homepagepromo", "home page promo"]);
 }
 
 /**
@@ -1266,9 +1249,8 @@ export function isAddBannerSliderChatIntent(message: string): boolean {
   if (!m) {
     return false;
   }
-  /** `add banner` but not the longer phrase `add banner slider` (handled separately). */
   const addBannerOnly = /\badd\s+(a\s+)?banner\b(?!\s+slider\b)/;
-  return (
+  if (
     /\badd\s+(a\s+)?banner\s+slider\b/.test(m) ||
     /\badd\s+(a\s+)?bannerslider\b/.test(m) ||
     addBannerOnly.test(m) ||
@@ -1277,7 +1259,10 @@ export function isAddBannerSliderChatIntent(message: string): boolean {
     /\binsert\s+banner\s+slider\b/.test(m) ||
     /\binsert\s+(a\s+)?bannerslider\b/.test(m) ||
     /\binsert\s+(a\s+)?banner\b(?!\s+slider\b)/.test(m)
-  );
+  ) {
+    return true;
+  }
+  return intentFuzzyMatch(m, ["bannerslider", "banner slider", "banner"]);
 }
 
 /** Natural phrasing for updating the last Banner Slider on the page (same picker as `Update BannerSlider-{uuid}`). */
@@ -1286,12 +1271,15 @@ export function isUpdateBannerSliderChatIntent(message: string): boolean {
   if (!m) {
     return false;
   }
-  return (
+  if (
     /\bupdate\s+(?:the\s+)?(?:slider\s+banner|banner\s+slider)\b/.test(m) ||
     /\bchange\s+(?:the\s+)?(?:slider\s+banner|banner\s+slider)\b/.test(m) ||
     /\bedit\s+(?:the\s+)?(?:slider\s+banner|banner\s+slider)\b/.test(m) ||
     /\brefresh\s+(?:the\s+)?(?:slider\s+banner|banner\s+slider)\b/.test(m)
-  );
+  ) {
+    return true;
+  }
+  return intentFuzzyMatch(m, ["bannerslider", "banner slider", "slider banner"], "update");
 }
 
 /**
@@ -1358,13 +1346,16 @@ export function isAddLinkPanelChatIntent(message: string): boolean {
   if (!m) {
     return false;
   }
-  return (
+  if (
     /\badd\s+link\s+panel\b/.test(m) ||
     /\badd\s+links\b/.test(m) ||
     /^\s*add\s+link\s*$/i.test(message.trim()) ||
     /^\s*link\s+panel\s*$/i.test(message.trim()) ||
     /\badd\s+a\s+link\b/.test(m)
-  );
+  ) {
+    return true;
+  }
+  return intentFuzzyMatch(m, ["linkpanel", "link panel", "links", "link"]);
 }
 
 function envBool(name: string, defaultVal: boolean): boolean {

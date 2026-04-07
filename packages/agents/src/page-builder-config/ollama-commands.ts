@@ -3,6 +3,7 @@ import type { IPageStructure } from "@znode/types/visual-editor";
 /** Kept short so prompt + page + num_predict fit under num_ctx (overflow can crash the Ollama runner). */
 const SYSTEM = `Page builder assistant. Reply with ONLY one JSON object (no markdown): {"commands":[...]}
 Kinds (snake_case): set_page_key, merge_root_props, clear_content, append_component, remove_component, merge_component_props, replace_zones. target: main|header|footer (merge/remove on main canvas may omit target; server uses main).
+IMPORTANT: NEVER use clear_content unless the user EXPLICITLY asks to clear, reset, or start over. Always APPEND new widgets to existing page content.
 Visible copy: append_component Heading, Text, ButtonGroup (PascalCase), target main. If the user asks for BOTH a heading and body text, output TWO append_component entries in order: Heading first, then Text.
 **Home Page Promo** / **homepage promo** (misspellings e.g. hompage, hoem page, pormo): do NOT output Heading or Text for that. Output {"commands":[]} only — the host retries with a server shortcut when the list is empty.
 If the user names an existing block id (e.g. Heading-…-uuid or Heading-<timestamp>-<shortId>) to change style/alignment/color/size: use merge_component_props ONLY — never append_component (append creates a NEW block).

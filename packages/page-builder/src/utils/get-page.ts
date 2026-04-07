@@ -175,7 +175,7 @@ export const initSubscription = async () => {
       console.log(JSON.stringify(keys));
       portalDataCache.delete(key);
       portalPromiseMap.delete(key);
-      console.log(`[Eviction] Removing key: ${key}`);p
+      console.log(`[Eviction] Removing key: ${key}`);
       isSubscribed = false;
     }
   });

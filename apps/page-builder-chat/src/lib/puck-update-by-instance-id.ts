@@ -118,191 +118,141 @@ export function findPuckComponentById(
   );
 }
 
-/**
- * Parses natural phrases like `change Heading-123-abc color to red` / `set Text-… colour to #f00`.
- * Avoids calling Ollama when the user names an existing `props.id`.
- */
-export function parseComponentColorChangeRequest(message: string): { componentId: string; color: string } | null {
-  const m = message
-    .trim()
-    .match(/^(?:change|update|set)\s+(\S+)\s+(?:text\s+)?colou?r\s+to\s+(.+)$/i);
-  if (!m?.[1] || m[2] === undefined) {
-    return null;
-  }
-  const componentId = m[1].trim();
-  const color = m[2].trim().replace(/^["']|["']$/g, "").trim();
-  if (!componentId || !color) {
-    return null;
-  }
-  if (/^(ProductsCarousel|BannerSlider)-/i.test(componentId)) {
-    return null;
-  }
-  return { componentId, color };
-}
-
-/**
- * Phrases like `change Heading-1775206954152-ai87cka7 background to blue` / `set Text-… background to #e0e0e0`.
- */
-export function parseComponentBackgroundChangeRequest(message: string): { componentId: string; background: string } | null {
-  const m = message
-    .trim()
-    .match(/^(?:change|update|set)\s+(\S+)\s+background\s+to\s+(.+)$/i);
-  if (!m?.[1] || m[2] === undefined) {
-    return null;
-  }
-  const componentId = m[1].trim();
-  const background = m[2].trim().replace(/^["']|["']$/g, "").trim();
-  if (!componentId || !background) {
-    return null;
-  }
-  if (/^(ProductsCarousel|BannerSlider)-/i.test(componentId)) {
-    return null;
-  }
-  return { componentId, background };
-}
-
-/**
- * Phrases like `align Heading-1775204443299-6bdg4clk to centre` / `please align Text-… to center`.
- * British **centre** → Puck `align` **center**. Runs before OpenAI so behaviour matches the Ollama path.
- */
-export function parseComponentAlignRequest(message: string): { componentId: string; align: "left" | "center" | "right" } | null {
-  const t = message.trim().replace(/\s+/g, " ");
-  const m = t.match(/^(?:please\s+)?align\s+(\S+)\s+(?:to\s+)?(left|right|center|centre)\s*\.?$/i);
-  if (!m?.[1] || !m[2]) {
-    return null;
-  }
-  const componentId = m[1].trim();
-  let raw = m[2].trim().toLowerCase();
-  if (raw === "centre") {
-    raw = "center";
-  }
-  if (raw !== "left" && raw !== "right" && raw !== "center") {
-    return null;
-  }
-  if (!componentId) {
-    return null;
-  }
-  if (/^(ProductsCarousel|BannerSlider)-/i.test(componentId)) {
-    return null;
-  }
-  return { componentId, align: raw };
-}
+import { fuzzyActionVerb, fuzzyAlignVerb, fuzzyMatchWord, fuzzyPropKeyword } from "./fuzzy-match";
 
 const HEADING_SIZE = new Set(["xxxl", "xxl", "xl", "l", "m", "s", "xs", "default"]);
 const TEXT_SIZE = new Set(["s", "m"]);
-const TEXT_WEIGHT = new Set(["normal", "semibold", "bold", "extrabold"]);
+const TEXT_WEIGHT_LIST = ["normal", "semibold", "bold", "extrabold"] as const;
+const ALIGN_VALUES = ["left", "center", "right", "centre"] as const;
 
 function isWidgetMergeExcludedId(componentId: string): boolean {
   return /^(ProductsCarousel|BannerSlider)-/i.test(componentId);
 }
 
-/**
- * `change Heading-x level to 4` / `set Heading-x to level 2` / `update Heading-x to h3`.
- * Puck stores **level** as `"1"`…`"6"`.
- */
-export function parseComponentLevelChangeRequest(message: string): { componentId: string; level: string } | null {
-  const t = message.trim();
-  let m = t.match(/^(?:change|update|set)\s+(\S+)\s+(?:level\s+to|to\s+level)\s+([1-6])\s*\.?$/i);
-  if (m?.[1] && m[2]) {
-    const componentId = m[1].trim();
-    if (!componentId || isWidgetMergeExcludedId(componentId)) {
-      return null;
-    }
-    return { componentId, level: m[2] };
-  }
-  m = t.match(/^(?:change|update|set)\s+(\S+)\s+to\s+h([1-6])\s*\.?$/i);
-  if (m?.[1] && m[2]) {
-    const componentId = m[1].trim();
-    if (!componentId || isWidgetMergeExcludedId(componentId)) {
-      return null;
-    }
-    return { componentId, level: m[2] };
-  }
-  return null;
-}
+export type ComponentPropChange =
+  | { prop: "color"; componentId: string; value: string }
+  | { prop: "background"; componentId: string; value: string }
+  | { prop: "align"; componentId: string; value: "left" | "center" | "right" }
+  | { prop: "level"; componentId: string; value: string }
+  | { prop: "size"; componentId: string; value: string }
+  | { prop: "text"; componentId: string; value: string }
+  | { prop: "weight"; componentId: string; value: string };
 
 /**
- * `change Heading-x size to l` / `set Text-y size to m` (Text only **s** | **m**).
+ * Single fuzzy parser for all `<verb> <componentId> <property> to <value>` patterns,
+ * including `align <id> to centre` and `set <id> to h3`.
+ * Tolerates typos in the verb, property keyword, and common value aliases.
  */
-export function parseComponentSizeChangeRequest(message: string): { componentId: string; size: string } | null {
-  const m = message
-    .trim()
-    .match(/^(?:change|update|set)\s+(\S+)\s+size\s+to\s+(\S+)\s*\.?$/i);
-  if (!m?.[1] || !m[2]) {
-    return null;
+export function parseComponentPropChange(message: string): ComponentPropChange | null {
+  const t = message.trim().replace(/\s+/g, " ").replace(/\.\s*$/, "");
+  if (!t) return null;
+
+  const words = t.split(" ");
+  if (words.length < 3) return null;
+
+  let verbWord = words[0]!;
+  let startIdx = 1;
+  if (verbWord.toLowerCase() === "please" && words.length >= 4) {
+    verbWord = words[1]!;
+    startIdx = 2;
   }
-  const componentId = m[1].trim();
-  const size = m[2].trim().toLowerCase();
-  if (!componentId || !size || isWidgetMergeExcludedId(componentId)) {
-    return null;
+
+  const alignVerb = fuzzyAlignVerb(verbWord);
+  if (alignVerb && (alignVerb === "align" || alignVerb === "aline" || alignVerb === "allign")) {
+    return parseAlignPattern(words, startIdx);
   }
-  return { componentId, size };
+
+  const verb = fuzzyActionVerb(verbWord);
+  if (!verb) return null;
+
+  const componentId = words[startIdx];
+  if (!componentId || isWidgetMergeExcludedId(componentId)) return null;
+
+  const rest = words.slice(startIdx + 1);
+  if (rest.length < 2) return null;
+
+  const hMatch = rest.join(" ").match(/^to\s+h([1-6])$/i);
+  if (hMatch?.[1]) {
+    return { prop: "level", componentId, value: hMatch[1] };
+  }
+
+  const levelToMatch = rest.join(" ").match(/^to\s+level\s+([1-6])$/i);
+  if (levelToMatch?.[1]) {
+    return { prop: "level", componentId, value: levelToMatch[1] };
+  }
+
+  const toIdx = rest.findIndex((w) => w.toLowerCase() === "to");
+  if (toIdx < 0) return null;
+
+  const propWords = rest.slice(0, toIdx).join(" ");
+  const valueRaw = rest.slice(toIdx + 1).join(" ").replace(/^["']|["']$/g, "").trim();
+  if (!propWords || !valueRaw) return null;
+
+  const prop = fuzzyPropKeyword(propWords);
+  if (!prop) return null;
+
+  switch (prop) {
+    case "color":
+      return { prop: "color", componentId, value: valueRaw };
+    case "background":
+      return { prop: "background", componentId, value: valueRaw };
+    case "align": {
+      const av = fuzzyMatchWord(valueRaw.toLowerCase(), ALIGN_VALUES as unknown as string[], 2);
+      if (!av) return null;
+      const normalized = av === "centre" ? "center" : av;
+      if (normalized !== "left" && normalized !== "center" && normalized !== "right") return null;
+      return { prop: "align", componentId, value: normalized };
+    }
+    case "level": {
+      const lm = valueRaw.match(/^h?([1-6])$/i);
+      if (!lm?.[1]) return null;
+      return { prop: "level", componentId, value: lm[1] };
+    }
+    case "size":
+      return { prop: "size", componentId, value: valueRaw.toLowerCase() };
+    case "text":
+      return { prop: "text", componentId, value: valueRaw };
+    case "weight": {
+      const wm = fuzzyMatchWord(valueRaw.toLowerCase(), TEXT_WEIGHT_LIST as unknown as string[], 2);
+      if (!wm) return null;
+      return { prop: "weight", componentId, value: wm };
+    }
+    default:
+      return null;
+  }
 }
 
-/**
- * Validates size token for the component type; returns props or null if invalid for **Text**.
- */
+function parseAlignPattern(words: string[], startIdx: number): ComponentPropChange | null {
+  const componentId = words[startIdx];
+  if (!componentId || isWidgetMergeExcludedId(componentId)) return null;
+  const rest = words.slice(startIdx + 1);
+  if (rest.length === 0) return null;
+  let valWord: string;
+  if (rest[0]!.toLowerCase() === "to" && rest.length >= 2) {
+    valWord = rest.slice(1).join(" ");
+  } else {
+    valWord = rest.join(" ");
+  }
+  const av = fuzzyMatchWord(valWord.toLowerCase(), ALIGN_VALUES as unknown as string[], 2);
+  if (!av) return null;
+  const normalized = av === "centre" ? "center" : av;
+  if (normalized !== "left" && normalized !== "center" && normalized !== "right") return null;
+  return { prop: "align", componentId, value: normalized };
+}
+
 export function mergeSizePropsForPuckType(componentType: string, size: string): Record<string, unknown> | null {
   if (componentType === "Text") {
-    if (!TEXT_SIZE.has(size)) {
-      return null;
-    }
-    return { size };
+    return TEXT_SIZE.has(size) ? { size } : null;
   }
   if (componentType === "Heading") {
-    if (!HEADING_SIZE.has(size)) {
-      return null;
-    }
-    return { size };
+    return HEADING_SIZE.has(size) ? { size } : null;
   }
-  if (HEADING_SIZE.has(size) || TEXT_SIZE.has(size)) {
-    return { size };
-  }
-  return null;
+  return (HEADING_SIZE.has(size) || TEXT_SIZE.has(size)) ? { size } : null;
 }
 
-/**
- * `change Heading-x text to Hello` / `set Text-y title to "Sale"` (Ollama-style copy edits by **props.id**).
- */
-export function parseComponentTextChangeRequest(message: string): { componentId: string; text: string } | null {
-  const m = message
-    .trim()
-    .match(/^(?:change|update|set)\s+(\S+)\s+(?:text|title)\s+to\s+([\s\S]+)$/i);
-  if (!m?.[1] || m[2] === undefined) {
-    return null;
-  }
-  const componentId = m[1].trim();
-  let text = m[2].trim().replace(/^["']|["']$/g, "").trim();
-  if (!componentId || isWidgetMergeExcludedId(componentId)) {
-    return null;
-  }
-  return { componentId, text };
-}
-
-/**
- * `change Text-x weight to bold` (Text widget **weight**).
- */
-export function parseComponentWeightChangeRequest(message: string): { componentId: string; weight: string } | null {
-  const m = message
-    .trim()
-    .match(/^(?:change|update|set)\s+(\S+)\s+weight\s+to\s+(normal|semibold|bold|extrabold)\s*\.?$/i);
-  if (!m?.[1] || !m[2]) {
-    return null;
-  }
-  const componentId = m[1].trim();
-  const weight = m[2].trim().toLowerCase();
-  if (!componentId || isWidgetMergeExcludedId(componentId)) {
-    return null;
-  }
-  return { componentId, weight };
-}
-
-/** Props key for color merges — Heading uses `textColor`; Text uses `color` (semantic / theme). */
+/** Heading → `textColor`; Text → semantic `color`. */
 export function mergeColorPropsForPuckType(componentType: string, color: string): Record<string, unknown> {
-  if (componentType === "Text") {
-    return { color };
-  }
-  return { textColor: color };
+  return componentType === "Text" ? { color } : { textColor: color };
 }
 
 /**

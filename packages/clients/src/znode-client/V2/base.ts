@@ -225,7 +225,7 @@ export async function getApiHeaders(requestType: string, isUserIdRequired: boole
     requestHeaders.set(HEADERS.ACCEPT, "text/plain");
     requestHeaders.set(HEADERS.CACHE_CONTROL, "no-store");
     requestHeaders.set(HEADERS.AUTHORIZATION, "basic " + generateDomainBasedToken());
-    requestHeaders.set(HEADERS.DOMAIN_NAME, 'webstore-z10-int.znodecorp.com');
+    requestHeaders.set(HEADERS.DOMAIN_NAME, 'webstore-preview-z10-dev10.znodecorp.com');
   }
 
   // if (isUserIdRequired && user?.userId) {

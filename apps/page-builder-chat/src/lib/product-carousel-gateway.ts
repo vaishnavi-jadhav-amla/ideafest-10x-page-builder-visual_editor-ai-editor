@@ -645,18 +645,40 @@ export function buildProductsCarouselAppendCommand(opts: {
   };
 }
 
+import { fuzzyAddVerb, fuzzyUpdateVerb, fuzzyWidgetName } from "./fuzzy-match";
+
+function productCarouselFuzzy(lower: string, mode: "add" | "update"): boolean {
+  const words = lower.trim().split(/\s+/);
+  if (words.length < 2) return false;
+  let verb = words[0]!;
+  let startIdx = 1;
+  if (verb === "please" && words.length >= 3) {
+    verb = words[1]!;
+    startIdx = 2;
+  }
+  const isVerb = mode === "add" ? fuzzyAddVerb(verb) !== null : fuzzyUpdateVerb(verb) !== null;
+  if (!isVerb) return false;
+  let tail = words.slice(startIdx).join(" ");
+  tail = tail.replace(/^(?:a|an|the)\s+/i, "");
+  if (!tail) return false;
+  return fuzzyWidgetName(tail, ["productcarousel", "product carousel", "productscarousel", "products carousel", "products"], 3) !== null;
+}
+
 export function isAddProductsCarouselChatIntent(message: string): boolean {
   const m = message.trim().toLowerCase();
   if (!m) {
     return false;
   }
-  return (
+  if (
     /\badd\s+products\b/.test(m) ||
     /\badd\s+product\s+carousel\b/.test(m) ||
     /\badd\s+products\s+carousel\b/.test(m) ||
     /\binsert\s+product\s+carousel\b/.test(m) ||
     /\binsert\s+products\s+carousel\b/.test(m)
-  );
+  ) {
+    return true;
+  }
+  return productCarouselFuzzy(m, "add");
 }
 
 /** "Update/change product carousel" — reuse the same `widgetsKey` as the carousel already on the page (or env fallback). */
@@ -665,7 +687,7 @@ export function isUpdateProductsCarouselChatIntent(message: string): boolean {
   if (!m) {
     return false;
   }
-  return (
+  if (
     /\bupdate\s+product\s+carousel\b/.test(m) ||
     /\bupdate\s+products\s+carousel\b/.test(m) ||
     /\bchange\s+product\s+carousel\b/.test(m) ||
@@ -674,5 +696,8 @@ export function isUpdateProductsCarouselChatIntent(message: string): boolean {
     /\bedit\s+products\s+carousel\b/.test(m) ||
     /\brefresh\s+product\s+carousel\b/.test(m) ||
     /\brefresh\s+products\s+carousel\b/.test(m)
-  );
+  ) {
+    return true;
+  }
+  return productCarouselFuzzy(m, "update");
 }

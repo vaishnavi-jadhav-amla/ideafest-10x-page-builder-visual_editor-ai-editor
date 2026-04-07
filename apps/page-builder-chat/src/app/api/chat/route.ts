@@ -58,13 +58,7 @@ import {
   findPuckComponentById,
   mergeColorPropsForPuckType,
   mergeSizePropsForPuckType,
-  parseComponentAlignRequest,
-  parseComponentBackgroundChangeRequest,
-  parseComponentColorChangeRequest,
-  parseComponentLevelChangeRequest,
-  parseComponentSizeChangeRequest,
-  parseComponentTextChangeRequest,
-  parseComponentWeightChangeRequest,
+  parseComponentPropChange,
   parseUpdateWidgetByInstanceId,
 } from "../../../lib/puck-update-by-instance-id";
 
@@ -764,293 +758,96 @@ export async function POST(req: Request) {
       });
     }
 
-    const colorChange = parseComponentColorChangeRequest(message);
-    if (colorChange) {
-      const found = findPuckComponentById(body.page, colorChange.componentId);
+    const propChange = parseComponentPropChange(message);
+    if (propChange) {
+      const found = findPuckComponentById(body.page, propChange.componentId);
       if (!found) {
         return jsonResult({
           assistantContent:
-            `No component with id \`${colorChange.componentId}\` on this page (searched main, header, footer).`,
+            `No component with id \`${propChange.componentId}\` on this page (searched main, header, footer).`,
           page: body.page,
           applied: 0,
           errors: [],
           toolArgumentsParsed: [],
-          source: "color-update-not-found",
+          source: `${propChange.prop}-update-not-found`,
         });
       }
-      const cmd: PageBuilderCommand = {
-        kind: "merge_component_props",
-        target: found.target,
-        componentId: colorChange.componentId,
-        props: mergeColorPropsForPuckType(found.type, colorChange.color),
-      };
-      const result = applyPageBuilderCommands(body.page, [cmd]);
-      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
-      const assistantContent =
-        result.errors.length === 0
-          ? ""
-          : `Color update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
-      return jsonResult({
-        assistantContent,
-        page: result.page,
-        errors: result.errors,
-        applied: result.applied,
-        toolArgumentsParsed: [{ commands: [cmd] }],
-        source: "component-color-update",
-      });
-    }
 
-    const backgroundChange = parseComponentBackgroundChangeRequest(message);
-    if (backgroundChange) {
-      const found = findPuckComponentById(body.page, backgroundChange.componentId);
-      if (!found) {
-        return jsonResult({
-          assistantContent:
-            `No component with id \`${backgroundChange.componentId}\` on this page (searched main, header, footer).`,
-          page: body.page,
-          applied: 0,
-          errors: [],
-          toolArgumentsParsed: [],
-          source: "background-update-not-found",
-        });
+      let props: Record<string, unknown> | null = null;
+      let validationError: string | null = null;
+      switch (propChange.prop) {
+        case "color":
+          props = mergeColorPropsForPuckType(found.type, propChange.value);
+          break;
+        case "background":
+          props = { background: propChange.value };
+          break;
+        case "align":
+          props = { align: propChange.value };
+          break;
+        case "level":
+          if (found.type !== "Heading") {
+            validationError = `**Level** applies to **Heading** blocks only; \`${propChange.componentId}\` is a **${found.type}**.`;
+          } else {
+            props = { level: propChange.value };
+          }
+          break;
+        case "size":
+          props = mergeSizePropsForPuckType(found.type, propChange.value);
+          if (!props) {
+            validationError =
+              found.type === "Text"
+                ? "Text supports **size** `s` or `m` only."
+                : found.type === "Heading"
+                  ? "Heading supports **size** `xxxl`, `xxl`, `xl`, `l`, `m`, `s`, `xs`, or `default`."
+                  : "Unsupported **size** for this block type.";
+          }
+          break;
+        case "text":
+          props = { text: propChange.value };
+          break;
+        case "weight":
+          if (found.type !== "Text") {
+            validationError = `**Weight** applies to **Text** blocks only; \`${propChange.componentId}\` is a **${found.type}**.`;
+          } else {
+            props = { weight: propChange.value };
+          }
+          break;
       }
-      const cmd: PageBuilderCommand = {
-        kind: "merge_component_props",
-        target: found.target,
-        componentId: backgroundChange.componentId,
-        props: { background: backgroundChange.background },
-      };
-      const result = applyPageBuilderCommands(body.page, [cmd]);
-      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
-      const assistantContent =
-        result.errors.length === 0
-          ? ""
-          : `Background update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
-      return jsonResult({
-        assistantContent,
-        page: result.page,
-        errors: result.errors,
-        applied: result.applied,
-        toolArgumentsParsed: [{ commands: [cmd] }],
-        source: "component-background-update",
-      });
-    }
 
-    const alignChange = parseComponentAlignRequest(message);
-    if (alignChange) {
-      const found = findPuckComponentById(body.page, alignChange.componentId);
-      if (!found) {
+      if (validationError) {
         return jsonResult({
-          assistantContent:
-            `No component with id \`${alignChange.componentId}\` on this page (searched main, header, footer).`,
+          assistantContent: validationError,
           page: body.page,
           applied: 0,
           errors: [],
           toolArgumentsParsed: [],
-          source: "align-update-not-found",
+          source: `${propChange.prop}-update-invalid`,
         });
       }
-      const cmd: PageBuilderCommand = {
-        kind: "merge_component_props",
-        target: found.target,
-        componentId: alignChange.componentId,
-        props: { align: alignChange.align },
-      };
-      const result = applyPageBuilderCommands(body.page, [cmd]);
-      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
-      const assistantContent =
-        result.errors.length === 0
-          ? ""
-          : `Align update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
-      return jsonResult({
-        assistantContent,
-        page: result.page,
-        errors: result.errors,
-        applied: result.applied,
-        toolArgumentsParsed: [{ commands: [cmd] }],
-        source: "component-align-update",
-      });
-    }
 
-    const levelChange = parseComponentLevelChangeRequest(message);
-    if (levelChange) {
-      const found = findPuckComponentById(body.page, levelChange.componentId);
-      if (!found) {
+      if (props) {
+        const cmd: PageBuilderCommand = {
+          kind: "merge_component_props",
+          target: found.target,
+          componentId: propChange.componentId,
+          props,
+        };
+        const result = applyPageBuilderCommands(body.page, [cmd]);
+        const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
+        const assistantContent =
+          result.errors.length === 0
+            ? ""
+            : `${propChange.prop} update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
         return jsonResult({
-          assistantContent:
-            `No component with id \`${levelChange.componentId}\` on this page (searched main, header, footer).`,
-          page: body.page,
-          applied: 0,
-          errors: [],
-          toolArgumentsParsed: [],
-          source: "level-update-not-found",
+          assistantContent,
+          page: result.page,
+          errors: result.errors,
+          applied: result.applied,
+          toolArgumentsParsed: [{ commands: [cmd] }],
+          source: `component-${propChange.prop}-update`,
         });
       }
-      if (found.type !== "Heading") {
-        return jsonResult({
-          assistantContent: `**Level** applies to **Heading** blocks only; \`${levelChange.componentId}\` is a **${found.type}**.`,
-          page: body.page,
-          applied: 0,
-          errors: [],
-          toolArgumentsParsed: [],
-          source: "level-update-wrong-type",
-        });
-      }
-      const cmd: PageBuilderCommand = {
-        kind: "merge_component_props",
-        target: found.target,
-        componentId: levelChange.componentId,
-        props: { level: levelChange.level },
-      };
-      const result = applyPageBuilderCommands(body.page, [cmd]);
-      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
-      const assistantContent =
-        result.errors.length === 0
-          ? ""
-          : `Level update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
-      return jsonResult({
-        assistantContent,
-        page: result.page,
-        errors: result.errors,
-        applied: result.applied,
-        toolArgumentsParsed: [{ commands: [cmd] }],
-        source: "component-level-update",
-      });
-    }
-
-    const sizeChange = parseComponentSizeChangeRequest(message);
-    if (sizeChange) {
-      const found = findPuckComponentById(body.page, sizeChange.componentId);
-      if (!found) {
-        return jsonResult({
-          assistantContent:
-            `No component with id \`${sizeChange.componentId}\` on this page (searched main, header, footer).`,
-          page: body.page,
-          applied: 0,
-          errors: [],
-          toolArgumentsParsed: [],
-          source: "size-update-not-found",
-        });
-      }
-      const props = mergeSizePropsForPuckType(found.type, sizeChange.size);
-      if (!props) {
-        const hint =
-          found.type === "Text"
-            ? "Text supports **size** `s` or `m` only."
-            : found.type === "Heading"
-              ? "Heading supports **size** `xxxl`, `xxl`, `xl`, `l`, `m`, `s`, `xs`, or `default`."
-              : "Unsupported **size** for this block type.";
-        return jsonResult({
-          assistantContent: hint,
-          page: body.page,
-          applied: 0,
-          errors: [],
-          toolArgumentsParsed: [],
-          source: "size-update-invalid",
-        });
-      }
-      const cmd: PageBuilderCommand = {
-        kind: "merge_component_props",
-        target: found.target,
-        componentId: sizeChange.componentId,
-        props,
-      };
-      const result = applyPageBuilderCommands(body.page, [cmd]);
-      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
-      const assistantContent =
-        result.errors.length === 0
-          ? ""
-          : `Size update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
-      return jsonResult({
-        assistantContent,
-        page: result.page,
-        errors: result.errors,
-        applied: result.applied,
-        toolArgumentsParsed: [{ commands: [cmd] }],
-        source: "component-size-update",
-      });
-    }
-
-    const textChange = parseComponentTextChangeRequest(message);
-    if (textChange) {
-      const found = findPuckComponentById(body.page, textChange.componentId);
-      if (!found) {
-        return jsonResult({
-          assistantContent:
-            `No component with id \`${textChange.componentId}\` on this page (searched main, header, footer).`,
-          page: body.page,
-          applied: 0,
-          errors: [],
-          toolArgumentsParsed: [],
-          source: "text-update-not-found",
-        });
-      }
-      const cmd: PageBuilderCommand = {
-        kind: "merge_component_props",
-        target: found.target,
-        componentId: textChange.componentId,
-        props: { text: textChange.text },
-      };
-      const result = applyPageBuilderCommands(body.page, [cmd]);
-      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
-      const assistantContent =
-        result.errors.length === 0
-          ? ""
-          : `Text update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
-      return jsonResult({
-        assistantContent,
-        page: result.page,
-        errors: result.errors,
-        applied: result.applied,
-        toolArgumentsParsed: [{ commands: [cmd] }],
-        source: "component-text-update",
-      });
-    }
-
-    const weightChange = parseComponentWeightChangeRequest(message);
-    if (weightChange) {
-      const found = findPuckComponentById(body.page, weightChange.componentId);
-      if (!found) {
-        return jsonResult({
-          assistantContent:
-            `No component with id \`${weightChange.componentId}\` on this page (searched main, header, footer).`,
-          page: body.page,
-          applied: 0,
-          errors: [],
-          toolArgumentsParsed: [],
-          source: "weight-update-not-found",
-        });
-      }
-      if (found.type !== "Text") {
-        return jsonResult({
-          assistantContent: `**Weight** applies to **Text** blocks only; \`${weightChange.componentId}\` is a **${found.type}**.`,
-          page: body.page,
-          applied: 0,
-          errors: [],
-          toolArgumentsParsed: [],
-          source: "weight-update-wrong-type",
-        });
-      }
-      const cmd: PageBuilderCommand = {
-        kind: "merge_component_props",
-        target: found.target,
-        componentId: weightChange.componentId,
-        props: { weight: weightChange.weight },
-      };
-      const result = applyPageBuilderCommands(body.page, [cmd]);
-      const lines = result.errors.map((e) => `#${e.commandIndex}: ${e.message}`).join("\n");
-      const assistantContent =
-        result.errors.length === 0
-          ? ""
-          : `Weight update: ${result.applied} applied, ${result.errors.length} error(s):\n${lines}`;
-      return jsonResult({
-        assistantContent,
-        page: result.page,
-        errors: result.errors,
-        applied: result.applied,
-        toolArgumentsParsed: [{ commands: [cmd] }],
-        source: "component-weight-update",
-      });
     }
 
     const instanceUpdate = parseUpdateWidgetByInstanceId(message);

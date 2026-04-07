@@ -105,7 +105,7 @@ export async function getHeaders(requestType: string, baseUrl: string): Promise<
       requestHeaders.set(HEADERS.ACCEPT, "text/plain");
       requestHeaders.set(HEADERS.CACHE_CONTROL, "no-store");
       requestHeaders.set(HEADERS.AUTHORIZATION, "basic " + generateDomainBasedToken());
-      requestHeaders.set(HEADERS.DOMAIN_NAME, headers.hostName || "");
+      requestHeaders.set(HEADERS.DOMAIN_NAME, "webstore-preview-z10-dev10.znodecorp.com");
       if (user?.userId)
       requestHeaders.set(HEADERS.ZNODE_ACCOUNT_ID, user?.accountId?.toString()|| "");
     }
