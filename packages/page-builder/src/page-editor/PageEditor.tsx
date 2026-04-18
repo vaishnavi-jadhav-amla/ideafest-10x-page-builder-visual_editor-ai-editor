@@ -4,7 +4,7 @@ import "@measured/puck/puck.css";
 import "../styles/index.css";
 
 import { ActionBar, Puck, usePuck, Render } from "@measured/puck";
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CustomizeControlBar } from "@znode/base-components/znode-widget/customize-control-bar";
 import type { Data } from "@measured/puck";
 import type { ReactNode } from "react";
@@ -44,6 +44,7 @@ export function PageEditor(props: Readonly<IPageEditorProps>) {
   const data: Data = pageStructure.data;
   const headerFooterData = headerFooterConfig(configParams);
   const [config, setConfig] = useState<any>(null);
+  const lastSentSchemaRef = useRef<string>("");
 
   useLayoutEffect(() => {
     if (headerFooterData) {
@@ -66,11 +67,15 @@ export function PageEditor(props: Readonly<IPageEditorProps>) {
 
   function onChangeDataToParentIframe(data: Data) {
     const schema = removeApiResponse(data, pageStructure);
+    const schemaString = JSON.stringify(schema);
+    if (schemaString === lastSentSchemaRef.current) {
+      return;
+    }
+    lastSentSchemaRef.current = schemaString;
     const pageStructureJson = generatePageStructure(schema, { url: pageStructure.key }, pageStructure);
     const eventData = {
       pageJson: pageStructureJson,
     };
-    console.log("onChangeDataToParentIframe-eventData---", eventData);
     doPostMessageToParent(
       VISUAL_EDITOR_EVENT_CONSTANTS.EVENT_TYPE,
       VISUAL_EDITOR_EVENT_CONSTANTS.EVENT_ACTION_TYPE,

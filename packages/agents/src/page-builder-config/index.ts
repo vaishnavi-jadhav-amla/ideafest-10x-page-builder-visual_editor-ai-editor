@@ -32,3 +32,15 @@ export {
 } from "./plain-text-commands";
 
 export { runOllamaPageCommands, type RunOllamaPageCommandsOptions } from "./ollama-commands";
+
+export {
+  runOpenAiVisionCommands,
+  runOllamaVisionCommands,
+  formatCmsWidgetSuggestions,
+  type VisionAnalysisResult,
+  type CmsWidgetSuggestion,
+  type RunOpenAiVisionOptions,
+  type RunOllamaVisionOptions,
+} from "./vision-commands";
+
+export { WIDGET_CATALOG, buildWidgetCatalogPrompt, type WidgetCatalogEntry } from "./widget-catalog";
